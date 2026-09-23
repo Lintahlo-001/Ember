@@ -31,7 +31,7 @@ The app is built with React Native and Expo for the mobile frontend, with an Exp
 (add as you build)
 
 Initial Dashboard Screen:
-[Initial Dashboard](<img width="1280" height="2856" alt="Screenshot_1790179834" src="https://github.com/user-attachments/assets/d71ac29b-9ea8-4cb5-8b84-8346cd4072af" />
+![Initial Dashboard](<img width="1280" height="2856" alt="Screenshot_1790179834" src="https://github.com/user-attachments/assets/d71ac29b-9ea8-4cb5-8b84-8346cd4072af" />
 )
 
 ## Known issues and next steps

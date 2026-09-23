@@ -30,9 +30,10 @@ The app is built with React Native and Expo for the mobile frontend, with an Exp
 ## Screenshots
 (add as you build)
 
-Initial Dashboard Screen:
-![Initial Dashboard](https://iili.io/nA7UED7.md.png)
-)
+### Initial Dashboard Screen
+
+<img src="https://iili.io/nA7UED7.md.png" alt="Initial Dashboard" width="200">
+
 
 ## Known issues and next steps
 (honest, ongoing list)

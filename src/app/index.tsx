@@ -1,17 +1,9 @@
-import { Text, View, StyleSheet } from "react-native";
+import { Redirect } from 'expo-router';
+import { useAuth } from '@/src/context/AuthContext';
 
+// Entry point: gated on auth state, not a one-time flag, per the Welcome
+// screen requirement (every logged-out cold launch lands on Welcome).
 export default function Index() {
-  return (
-    <View style={styles.container}>
-      <Text>Edit src/app/index.tsx to edit this screen.</Text>
-    </View>
-  );
+  const { isLoggedIn } = useAuth();
+  return <Redirect href={isLoggedIn ? '/(tabs)/dashboard' : '/(auth)/welcome'} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});

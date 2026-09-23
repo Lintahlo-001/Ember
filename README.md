@@ -1,9 +1,11 @@
 # Ember (WIP - Some text are placeholders)
 
-## 1. Overview
-(2-3 sentences: what Ember does, who it's for)
+## Overview
+Ember is a mobile Pokémon card collection tracker built for collectors who want an organized digital record of the physical cards they own. It lets users search for cards, track ownership details such as quantity, condition, and variant, manage a wishlist, and browse Pokémon and card sets to see their collection progress.
 
-## 2. Setup and installation
+The app is built with React Native and Expo for the mobile frontend, with an Express/Node.js backend, PostgreSQL for cached Pokémon card data, and Supabase for authentication and private user collection data.
+
+## Setup and installation
 - Prerequisites: Node.js vX, PostgreSQL vX, ...
 - Clone: `git clone ...`
 - Install dependencies: `npm install`
@@ -13,20 +15,19 @@
   | `DATABASE_URL` | `postgres://user:pass@localhost:5432/ember` | Postgres connection |
   | `SUPABASE_URL` | `https://xxxx.supabase.co` | Auth + user data |
   | `SUPABASE_ANON_KEY` | `eyJ...` | Supabase client key |
-- Database setup/seed: (steps)
 
-## 3. How to run it
-`npm run dev` → expect: (what a reader should see, e.g. "server on :3000, GET /health returns 200")
+## How to run it
+`npm run start`
 
-## 4. Features and usage
+## Features and usage
 - (primary flow, walked through)
 - API endpoints (method, path, what it does)
 
-## 5. Project structure
+## Project structure
 (short folder map)
 
-## 6. Screenshots
+## Screenshots
 (add as you build)
 
-## 7. Known issues and next steps
+## Known issues and next steps
 (honest, ongoing list)

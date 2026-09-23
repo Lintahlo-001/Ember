@@ -1,4 +1,5 @@
-# Ember (WIP - Some text are placeholders)
+# Ember (WIP)
+# Some placeholder texts below fr
 
 ## Overview
 Ember is a mobile Pokémon card collection tracker built for collectors who want an organized digital record of the physical cards they own. It lets users search for cards, track ownership details such as quantity, condition, and variant, manage a wishlist, and browse Pokémon and card sets to see their collection progress.

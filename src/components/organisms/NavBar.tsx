@@ -28,7 +28,8 @@ export default function NavBar({ state, descriptors, navigation }: NavBarProps) 
           const { options } = descriptors[route.key];
           const label = options.title ?? route.name;
           const isFocused = state.index === index;
-          const color = isFocused ? theme.colors.primary : theme.colors.text;
+          const iconColor = isFocused ? theme.colors.surface : theme.colors.text;
+          const labelColor = isFocused ? theme.colors.accent : theme.colors.text;
           const renderIcon = ICONS[route.name];
 
           const onPress = () => {
@@ -52,8 +53,10 @@ export default function NavBar({ state, descriptors, navigation }: NavBarProps) 
               hitSlop={8}
               style={styles.tab}
             >
-              {renderIcon ? renderIcon(color, 22) : null}
-              <Text style={[styles.label, { color }]} numberOfLines={1}>
+              <View style={[styles.iconChip, isFocused && styles.iconChipActive]}>
+                {renderIcon ? renderIcon(iconColor, 22) : null}
+              </View>
+              <Text style={[styles.label, { color: labelColor }]} numberOfLines={1}>
                 {label}
               </Text>
             </Pressable>
@@ -76,7 +79,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '90%',
     maxWidth: 420,
-    backgroundColor: 'rgba(246, 242, 233, 0.85)', // theme.colors.surface @ 85% alpha
+    backgroundColor: 'rgba(246, 242, 233, 0.55)',
     borderRadius: 999,
     paddingVertical: theme.spacing.space1,
     paddingHorizontal: theme.spacing.space1,
@@ -93,6 +96,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
     borderRadius: 999,
+  },
+  iconChip: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: 'transparent',
+  },
+  iconChipActive: {
+    backgroundColor: theme.colors.accent,
   },
   label: {
     fontFamily: theme.fonts.body,

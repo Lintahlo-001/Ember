@@ -1,12 +1,13 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Link } from 'expo-router';
+import Screen from '@/src/components/layout/Screen';
 import { Ionicons } from '@expo/vector-icons';
+import { Link } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 // TODO: real search-on-submit (not live inline), Card Sets section grouped
 // by `serie` with collapsible groups + favorites sorted first.
 export default function Dashboard() {
   return (
-    <View style={styles.container}>
+    <Screen>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Ember</Text>
         <Link href="/(tabs)/dashboard/settings" asChild>
@@ -36,13 +37,12 @@ export default function Dashboard() {
       </View>
 
       <Text style={styles.placeholder}>Card Sets section (grouped by serie) - TODO</Text>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { fontSize: 28, fontWeight: '700' },
   searchBar: { marginTop: 16, padding: 12, borderRadius: 12, backgroundColor: '#f2f2f2' },
   navCards: { flexDirection: 'row', gap: 12, marginTop: 16 },

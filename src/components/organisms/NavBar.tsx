@@ -10,7 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 type TabBarRenderer = NonNullable<ComponentProps<typeof Tabs>['tabBar']>;
 type NavBarProps = Parameters<TabBarRenderer>[0];
 
-const CHIP_WIDTH = 64;
+const TAB_WIDTH =90;
+const TAB_GAP = 15;
 const RADIUS = 12;
 
 const ICONS: Record<string, (color: string, size: number) => React.ReactNode> = {
@@ -25,7 +26,10 @@ export default function NavBar({ state, descriptors, navigation }: NavBarProps) 
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, theme.spacing.space1) }]}
+      style={[
+        styles.wrapper,
+        { paddingBottom: insets.bottom + theme.spacing.space2 },
+      ]}
     >
       <View style={styles.shadowWrapper}>
         <BlurView intensity={40} tint="light" style={styles.blur}>
@@ -56,15 +60,13 @@ export default function NavBar({ state, descriptors, navigation }: NavBarProps) 
                   accessibilityRole="tab"
                   accessibilityState={{ selected: isFocused }}
                   accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
-                  hitSlop={8}
-                  style={styles.tab}
+                  hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                  style={[styles.tab, isFocused && styles.tabActive]}
                 >
-                  <View style={[styles.chip, isFocused && styles.chipActive]}>
-                    {renderIcon ? renderIcon(contentColor, 18) : null}
-                    <Text style={[styles.label, { color: contentColor }]} numberOfLines={1}>
-                      {label}
-                    </Text>
-                  </View>
+                  {renderIcon ? renderIcon(contentColor, 16) : null}
+                  <Text style={[styles.label, { color: contentColor }]} numberOfLines={1}>
+                    {label}
+                  </Text>
                 </Pressable>
               );
             })}
@@ -84,8 +86,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   shadowWrapper: {
-    width: '90%',
-    maxWidth: 420,
     borderRadius: RADIUS,
     backgroundColor: theme.colors.surface,
     shadowColor: '#000',
@@ -108,27 +108,19 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    paddingVertical: 4,
-    paddingHorizontal: 4,
+    gap: TAB_GAP,
   },
   tab: {
-    flex: 1,
-    minHeight: theme.a11y.touchTargetMin,
+    width: TAB_WIDTH,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  chip: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: CHIP_WIDTH,
-    gap: 2,
-    paddingVertical: 4,
+    gap: 1,
+    paddingVertical: 5,
     borderRadius: RADIUS,
     overflow: 'hidden',
     backgroundColor: 'transparent',
   },
-  chipActive: {
+    tabActive: {
     backgroundColor: theme.colors.accent,
   },
   label: {

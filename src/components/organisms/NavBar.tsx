@@ -1,9 +1,13 @@
 import PokedexIcon from '@/src/components/atoms/icons/PokedexIcon';
 import theme from '@/src/theme/theme';
 import { Feather } from '@expo/vector-icons';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { Tabs } from 'expo-router';
+import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+type TabBarRenderer = NonNullable<ComponentProps<typeof Tabs>['tabBar']>;
+type NavBarProps = Parameters<TabBarRenderer>[0];
 
 const ICONS: Record<string, (color: string, size: number) => React.ReactNode> = {
   wishlist: (color, size) => <Feather name="heart" size={size} color={color} />,
@@ -11,7 +15,7 @@ const ICONS: Record<string, (color: string, size: number) => React.ReactNode> = 
   pokedex: (color, size) => <PokedexIcon size={size} color={color} />,
 };
 
-export default function NavBar({ state, descriptors, navigation }: BottomTabBarProps) {
+export default function NavBar({ state, descriptors, navigation }: NavBarProps) {
   const insets = useSafeAreaInsets();
 
   return (

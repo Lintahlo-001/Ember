@@ -9,6 +9,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 type TabBarRenderer = NonNullable<ComponentProps<typeof Tabs>['tabBar']>;
 type NavBarProps = Parameters<TabBarRenderer>[0];
 
+const CHIP_HEIGHT = 40;
+const CHIP_RADIUS = CHIP_HEIGHT / 2;
+
 const ICONS: Record<string, (color: string, size: number) => React.ReactNode> = {
   wishlist: (color, size) => <Feather name="heart" size={size} color={color} />,
   dashboard: (color, size) => <Feather name="home" size={size} color={color} />,
@@ -28,8 +31,7 @@ export default function NavBar({ state, descriptors, navigation }: NavBarProps) 
           const { options } = descriptors[route.key];
           const label = options.title ?? route.name;
           const isFocused = state.index === index;
-          const iconColor = isFocused ? theme.colors.surface : theme.colors.text;
-          const labelColor = isFocused ? theme.colors.accent : theme.colors.text;
+          const contentColor = isFocused ? theme.colors.surface : theme.colors.text;
           const renderIcon = ICONS[route.name];
 
           const onPress = () => {
@@ -45,7 +47,7 @@ export default function NavBar({ state, descriptors, navigation }: NavBarProps) 
 
           return (
             <Pressable
-              key={route.key}
+              key={`${route.key}-${isFocused}`}
               onPress={onPress}
               accessibilityRole="tab"
               accessibilityState={{ selected: isFocused }}
@@ -53,12 +55,12 @@ export default function NavBar({ state, descriptors, navigation }: NavBarProps) 
               hitSlop={8}
               style={styles.tab}
             >
-              <View style={[styles.iconChip, isFocused && styles.iconChipActive]}>
-                {renderIcon ? renderIcon(iconColor, 22) : null}
+              <View style={[styles.chip, isFocused && styles.chipActive]}>
+                {renderIcon ? renderIcon(contentColor, 20) : null}
+                <Text style={[styles.label, { color: contentColor }]} numberOfLines={1}>
+                  {label}
+                </Text>
               </View>
-              <Text style={[styles.label, { color: labelColor }]} numberOfLines={1}>
-                {label}
-              </Text>
             </Pressable>
           );
         })}
@@ -94,18 +96,19 @@ const styles = StyleSheet.create({
     minHeight: theme.a11y.touchTargetMin,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    borderRadius: 999,
   },
-  iconChip: {
+  chip: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 14,
-    borderRadius: 999,
+    gap: 6,
+    height: CHIP_HEIGHT,
+    paddingHorizontal: theme.spacing.space2,
+    borderRadius: CHIP_RADIUS,
+    overflow: 'hidden',
     backgroundColor: 'transparent',
   },
-  iconChipActive: {
+  chipActive: {
     backgroundColor: theme.colors.accent,
   },
   label: {

@@ -1,4 +1,3 @@
-
 import PokedexIcon from '@/src/components/atoms/icons/PokedexIcon';
 import theme from '@/src/theme/theme';
 import { Feather } from '@expo/vector-icons';
@@ -88,6 +87,7 @@ const styles = StyleSheet.create({
     width: '90%',
     maxWidth: 420,
     borderRadius: RADIUS,
+    backgroundColor: theme.colors.surface,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -99,7 +99,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tint: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(246, 242, 233, 0.35)',
   },
   row: {

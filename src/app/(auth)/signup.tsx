@@ -29,7 +29,8 @@ export default function Signup() {
 
   const handleGoogle = async () => {
     setError(null);
-    const { error: googleError } = await signInWithGoogle();
+    const { error: googleError, cancelled } = await signInWithGoogle();
+    if (cancelled) return;
     if (googleError) return setError(googleError);
     router.replace('/(tabs)/dashboard');
   };

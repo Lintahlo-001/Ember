@@ -17,7 +17,7 @@ type AuthContextType = {
     password: string,
     username: string
   ) => Promise<{ error: string | null }>;
-  signInWithGoogle: () => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null; cancelled?: boolean }>;
   logout: () => Promise<void>;
 };
 
@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return { error: error.message };
 
     const result = await WebBrowser.openAuthSessionAsync(data.url ?? '', redirectTo);
-    if (result.type !== 'success') return { error: null };
+    if (result.type !== 'success') return { error: null, cancelled: true };
 
     const { params, errorCode } = QueryParams.getQueryParams(result.url);
     if (errorCode) return { error: errorCode };

@@ -1,4 +1,4 @@
-import { AuthProvider } from '@/src/context/AuthContext';
+import { AuthProvider, useAuth } from '@/src/context/AuthContext';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -7,7 +7,8 @@ import { useEffect } from 'react';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootLayoutNav() {
+  const { loading: authLoading } = useAuth();
   const [fontsLoaded, fontError] = useFonts({
     'Anton-Regular': require('../../assets/fonts/Anton-Regular.ttf'),
     'WorkSans-Regular': require('../../assets/fonts/WorkSans-Regular.ttf'),
@@ -15,17 +16,17 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    if ((fontsLoaded || fontError) && !authLoading) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, authLoading]);
 
-  if (!fontsLoaded && !fontError) {
+  if ((!fontsLoaded && !fontError) || authLoading) {
     return null;
   }
 
   return (
-    <AuthProvider>
+    <>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
@@ -33,6 +34,14 @@ export default function RootLayout() {
         <Stack.Screen name="modals/ownership-entry" options={{ presentation: 'modal' }} />
         <Stack.Screen name="modals/pricing-detail" options={{ presentation: 'modal' }} />
       </Stack>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootLayoutNav />
     </AuthProvider>
   );
 }

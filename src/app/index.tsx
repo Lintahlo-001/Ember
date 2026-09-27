@@ -1,9 +1,8 @@
-import { Redirect } from 'expo-router';
 import { useAuth } from '@/src/context/AuthContext';
+import { Redirect } from 'expo-router';
 
-// Entry point: gated on auth state, not a one-time flag, per the Welcome
-// screen requirement (every logged-out cold launch lands on Welcome).
 export default function Index() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, loading, session } = useAuth();
+  console.log('[index] loading:', loading, 'isLoggedIn:', isLoggedIn, 'session:', session?.user?.email ?? null);
   return <Redirect href={isLoggedIn ? '/(tabs)/dashboard' : '/(auth)/welcome'} />;
 }

@@ -153,3 +153,15 @@ ember/
 - **"Forgot Password?" on Login is an intentional no-op** — flagged in-code, waiting on the Change Password sub-screens existing (My Account group) before wiring up a real Supabase deep link.
 - **No on-device caching (SQLite/filesystem) or offline queueing yet** — the app currently has no offline story.
 - **No pricing integration yet** — no price pill, no Pricing Detail Modal data, no daily batch price sync.
+
+## AI use
+ 
+![built with AI assistance](https://img.shields.io/badge/built%20with-AI%20assistance-blue)
+ 
+This project was built with AI assistance (Claude, Sonnet 5).
+
+See the following for more details: [AI-USAGE.md](./AI-USAGE.md)
+ 
+## License
+ 
+MIT, see [LICENSE](LICENSE).

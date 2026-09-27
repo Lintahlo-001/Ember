@@ -6,19 +6,25 @@ import theme from '@/src/theme/theme';
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
+const RING_SIZE = 320;
+const POKEBALL_SIZE = 180;
+
 export default function Welcome() {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.ballWrapper}>
-          <FireSparks size={260} />
+          <FireSparks size={RING_SIZE} />
           <View style={styles.pokeballCenter}>
-            <PokeballIcon size={130} color={theme.colors.primary} />
+            <PokeballIcon size={POKEBALL_SIZE} color={theme.colors.primary} />
           </View>
         </View>
 
-        <Text style={styles.title}>Collect. Track. Complete.</Text>
-        <Text style={styles.subtitle}>Your Pokémon card collection, all in one place.</Text>
+        <View style={styles.textGroup}>
+          <Text style={styles.appName}>Ember</Text>
+          <Text style={styles.title}>Collect. Track. Complete.</Text>
+          <Text style={styles.subtitle}>Your Pokémon card collection, all in one place.</Text>
+        </View>
 
         <View style={styles.buttons}>
           <Button label="Log In" variant="cta" onPress={() => router.push('/(auth)/login')} />
@@ -40,10 +46,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.space3,
     gap: theme.spacing.space2,
   },
-  ballWrapper: { width: 260, height: 260, marginBottom: theme.spacing.space2 },
+  ballWrapper: { width: RING_SIZE, height: RING_SIZE, marginBottom: theme.spacing.space3 },
   pokeballCenter: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center',},
-  title: { fontFamily: theme.fonts.header, fontSize: theme.fontSizes.xl, color: theme.colors.text, textAlign: 'center' },
-  subtitle: { fontFamily: theme.fonts.body, fontSize: theme.fontSizes.base, color: theme.colors.text, textAlign: 'center', marginBottom: theme.spacing.space2 },
-  buttons: { width: '100%', gap: theme.spacing.space1, marginTop: theme.spacing.space2 },
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center',
+  },
+  textGroup: {
+    alignItems: 'center'
+  },
+  appName: {
+    fontFamily: theme.fonts.header,
+    fontSize: theme.fontSizes.mainHeader,
+    lineHeight: theme.fontSizes.mainHeader,
+    color: theme.colors.text,
+    textAlign: 'center',
+  },
+  title: {
+    fontFamily: theme.fonts.header,
+    fontSize: theme.fontSizes.xl,
+    color: theme.colors.text,
+    textAlign: 'center',
+    marginTop: -4, 
+  },
+  subtitle: { fontFamily: theme.fonts.body, fontSize: theme.fontSizes.base, color: theme.colors.text, textAlign: 'center' },
+  buttons: { width: '100%', gap: theme.spacing.space1, marginTop: theme.spacing.space2, marginBottom: theme.spacing.space4 },
 });

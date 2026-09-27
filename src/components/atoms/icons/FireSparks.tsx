@@ -1,11 +1,19 @@
 import theme from '@/src/theme/theme';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
 const SPARK_COUNT = 6;
-const RADIUS = 110;
+const SPARK_ICON_SIZE = 50;
+const RADIUS_MARGIN = 30;
 
 function Spark({ size, color }: { size: number; color: string }) {
   return (
@@ -18,14 +26,41 @@ function Spark({ size, color }: { size: number; color: string }) {
   );
 }
 
-export default function FireSparks({ size = 260 }: { size?: number }) {
+function OrbitingSpark({
+  x,
+  y,
+  size,
+  color,
+  rotation,
+}: {
+  x: number;
+  y: number;
+  size: number;
+  color: string;
+  rotation: SharedValue<number>;
+}) {
+  const counterRotateStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${-rotation.value}deg` }],
+  }));
+
+  return (
+    <View style={[styles.spark, { left: x, top: y }]}>
+      <Animated.View style={counterRotateStyle}>
+        <Spark size={size} color={color} />
+      </Animated.View>
+    </View>
+  );
+}
+
+export default function FireSparks({ size = 320 }: { size?: number }) {
   const rotation = useSharedValue(0);
+  const radius = size / 2 - RADIUS_MARGIN;
 
   useEffect(() => {
-    rotation.value = withRepeat(withTiming(360, { duration: 14000, easing: Easing.linear }), -1, false);
+    rotation.value = withRepeat(withTiming(360, { duration: 7000, easing: Easing.linear }), -1, false);
   }, [rotation]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  const orbitStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
@@ -33,19 +68,24 @@ export default function FireSparks({ size = 260 }: { size?: number }) {
     const angle = (i / SPARK_COUNT) * 2 * Math.PI;
     return {
       key: i,
-      x: size / 2 + RADIUS * Math.cos(angle) - 8,
-      y: size / 2 + RADIUS * Math.sin(angle) - 8,
+      x: size / 2 + radius * Math.cos(angle) - SPARK_ICON_SIZE / 2,
+      y: size / 2 + radius * Math.sin(angle) - SPARK_ICON_SIZE / 2,
       color: i % 2 === 0 ? theme.colors.accent : theme.colors.primary,
     };
   });
 
   return (
     <View style={[styles.container, { width: size, height: size }]} pointerEvents="none">
-      <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
+      <Animated.View style={[StyleSheet.absoluteFill, orbitStyle]}>
         {sparks.map((spark) => (
-          <View key={spark.key} style={[styles.spark, { left: spark.x, top: spark.y }]}>
-            <Spark size={16} color={spark.color} />
-          </View>
+          <OrbitingSpark
+            key={spark.key}
+            x={spark.x}
+            y={spark.y}
+            size={SPARK_ICON_SIZE}
+            color={spark.color}
+            rotation={rotation}
+          />
         ))}
       </Animated.View>
     </View>

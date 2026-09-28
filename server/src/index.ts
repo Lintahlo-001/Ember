@@ -1,7 +1,8 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import { pool } from './db';
+import { catalogRouter } from './routes/catalog';
 
 dotenv.config();
 
@@ -18,6 +19,14 @@ app.get('/health', async (_req, res) => {
     console.error('Database connection failed:', err);
     res.status(500).json({ status: 'error', message: 'Database unreachable' });
   }
+});
+
+app.use(catalogRouter);
+
+// Last-resort handler: log details server-side, never leak them to the client.
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 const PORT = process.env.PORT || 3000;

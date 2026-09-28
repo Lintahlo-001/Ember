@@ -4,6 +4,7 @@ import PokeballIcon from '@/src/components/atoms/icons/PokeballIcon';
 import Screen from '@/src/components/layout/Screen';
 import FormField from '@/src/components/molecules/FormField';
 import SocialAuthButton from '@/src/components/molecules/SocialAuthButton';
+import SuccessDialog from '@/src/components/molecules/SuccessDialog';
 import { useAuth } from '@/src/context/AuthContext';
 import theme from '@/src/theme/theme';
 import { Link, router } from 'expo-router';
@@ -17,6 +18,7 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const handleSignup = async () => {
     setError(null);
@@ -24,6 +26,10 @@ export default function Signup() {
     const { error: signUpError } = await signUpWithPassword(email.trim(), password, username.trim());
     setSubmitting(false);
     if (signUpError) return setError(signUpError);
+    setShowSuccess(true);
+  };
+
+  const handleSuccessConfirm = () => {
     router.replace('/(auth)/login');
   };
 
@@ -73,6 +79,13 @@ export default function Signup() {
           </Link>
         </View>
       </ScrollView>
+      <SuccessDialog
+        visible={showSuccess}
+        title="Account Created!"
+        message="Your account is ready. Log in to start building your collection."
+        buttonLabel="Go to Login"
+        onConfirm={handleSuccessConfirm}
+      />
     </Screen>
   );
 }

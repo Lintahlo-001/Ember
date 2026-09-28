@@ -12,7 +12,7 @@ import Animated, {
 import Svg, { Path } from 'react-native-svg';
 
 const SPARK_COUNT = 6;
-const SPARK_ICON_SIZE = 50;
+const SPARK_ICON_SIZE = 75;
 const RADIUS_MARGIN = 30;
 
 function Spark({ size, color }: { size: number; color: string }) {

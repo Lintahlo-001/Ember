@@ -1,14 +1,16 @@
 // Run once a day (Render Cron Job -> `npm run sync:prod`) or manually: `npm run sync`.
 import { pool } from '../db';
-import { refreshStaleCards, syncAllSets } from '../sync';
+import { refreshStaleCards, syncAllSets, syncMissingDetails } from '../sync';
 
 async function main() {
   const started = Date.now();
   const sets = await syncAllSets();
+  const details = await syncMissingDetails(3000);
   const cards = await refreshStaleCards();
   console.log(
     `Sync done in ${Math.round((Date.now() - started) / 1000)}s: ` +
-      `${sets.discovered} new sets, ${sets.updated} updated sets, ${cards} cards refreshed`,
+      `${sets.discovered} new sets, ${sets.updated} updated sets, ` +
+      `${details.done} new card details (${details.failed} failed), ${cards} cards refreshed`,
   );
 }
 

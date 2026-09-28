@@ -145,3 +145,39 @@ export async function refreshStaleCards(limit = 500): Promise<number> {
   }
   return done;
 }
+
+export async function syncMissingDetails(
+  maxCards = Infinity,
+  concurrency = 5,
+): Promise<{ done: number; failed: number }> {
+  const BATCH = 200;
+  let lastId = '';
+  let done = 0;
+  let failed = 0;
+
+  while (done + failed < maxCards) {
+    const take = Math.min(BATCH, maxCards - done - failed);
+    const { rows } = await pool.query(
+      `SELECT id FROM catalog.cards
+       WHERE detail_synced_at IS NULL AND id > $1
+       ORDER BY id LIMIT $2`,
+      [lastId, take],
+    );
+    if (rows.length === 0) break;
+    lastId = rows[rows.length - 1].id;
+
+    for (let i = 0; i < rows.length; i += concurrency) {
+      const chunk = rows.slice(i, i + concurrency);
+      const results = await Promise.allSettled(chunk.map((r) => syncCard(r.id)));
+      results.forEach((r, j) => {
+        if (r.status === 'fulfilled') done++;
+        else {
+          failed++;
+          console.error(`syncCard failed for ${chunk[j].id}:`, r.reason);
+        }
+      });
+    }
+    console.log(`details: ${done} ok, ${failed} failed`);
+  }
+  return { done, failed };
+}

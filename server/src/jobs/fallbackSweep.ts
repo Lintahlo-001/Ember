@@ -45,7 +45,7 @@ function localIdMatches(tcgdexLocalId: string, pwCardNumber: string | null): boo
 
 type PwSetCardList = Awaited<ReturnType<typeof getPwSetCards>>;
 
-async function sweepCards(pwSets: PwSet[], limit: number): Promise<{ done: number; failed: number; skipped: number; stopped: boolean }> {
+export async function sweepCards(pwSets: PwSet[], limit: number): Promise<{ done: number; failed: number; skipped: number; stopped: boolean }> {
   const { rows } = await pool.query(
     `SELECT c.id, c.local_id, c.set_id, s.name AS set_name
      FROM catalog.cards c JOIN catalog.sets s ON s.id = c.set_id
@@ -131,7 +131,7 @@ async function sweepCards(pwSets: PwSet[], limit: number): Promise<{ done: numbe
   return { done, failed, skipped, stopped };
 }
 
-async function sweepSetLogos(pwSets: PwSet[], limit: number): Promise<{ done: number; failed: number; skipped: number; stopped: boolean }> {
+export async function sweepSetLogos(pwSets: PwSet[], limit: number): Promise<{ done: number; failed: number; skipped: number; stopped: boolean }> {
   const { rows } = await pool.query(
     `SELECT id, name, logo FROM catalog.sets WHERE logo_path IS NULL LIMIT $1`,
     [limit],

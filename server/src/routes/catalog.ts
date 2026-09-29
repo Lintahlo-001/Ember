@@ -1,17 +1,30 @@
 import { Router } from 'express';
 import { pool } from '../db';
+import { publicUrl } from '../storage';
 import { syncCard, syncSet } from '../sync';
-import { TcgdexNotFound } from '../tcgdex';
+import { isUsableTcgdexAsset, TcgdexNotFound } from '../tcgdex';
 
 export const catalogRouter = Router();
 
 const ID_RE = /^[A-Za-z0-9._-]{1,40}$/;
 
+function resolveAsset(tcgdexUrl: string | null, storagePath: string | null): string | null {
+  if (storagePath) return publicUrl(storagePath);
+  if (isUsableTcgdexAsset(tcgdexUrl)) return tcgdexUrl;
+  return null;
+}
+
 catalogRouter.get('/sets', async (_req, res) => {
   const { rows } = await pool.query(
     'SELECT * FROM catalog.sets ORDER BY release_date DESC NULLS LAST, name',
   );
-  res.json(rows);
+  res.json(
+    rows.map((s) => ({
+      ...s,
+      logo_url: resolveAsset(s.logo, s.logo_path),
+      symbol_url: resolveAsset(s.symbol, null),
+    })),
+  );
 });
 
 catalogRouter.get('/sets/:setId', async (req, res) => {
@@ -29,12 +42,22 @@ catalogRouter.get('/sets/:setId', async (req, res) => {
     set = await pool.query('SELECT * FROM catalog.sets WHERE id = $1', [setId]);
   }
   const cards = await pool.query(
-    `SELECT id, local_id, name, image_base, image_source, rarity, price_market, price_currency
+    `SELECT id, local_id, name, image_base, image_path, image_source, rarity, price_market, price_currency
      FROM catalog.cards WHERE set_id = $1
      ORDER BY NULLIF(regexp_replace(local_id, '\\D', '', 'g'), '')::int NULLS LAST, local_id`,
     [setId],
   );
-  res.json({ ...set.rows[0], cards: cards.rows });
+
+  const row = set.rows[0];
+  res.json({
+    ...row,
+    logo_url: resolveAsset(row.logo, row.logo_path),
+    symbol_url: resolveAsset(row.symbol, null),
+    cards: cards.rows.map((c) => ({
+      ...c,
+      image_url: resolveAsset(c.image_base ? `${c.image_base}/high.webp` : null, c.image_path),
+    })),
+  });
 });
 
 catalogRouter.get('/cards/:cardId', async (req, res) => {
@@ -51,5 +74,10 @@ catalogRouter.get('/cards/:cardId', async (req, res) => {
     }
     card = await pool.query('SELECT * FROM catalog.cards WHERE id = $1', [cardId]);
   }
-  res.json(card.rows[0]);
+
+  const row = card.rows[0];
+  res.json({
+    ...row,
+    image_url: resolveAsset(row.image_base ? `${row.image_base}/high.webp` : null, row.image_path),
+  });
 });

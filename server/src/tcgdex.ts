@@ -40,6 +40,11 @@ async function get<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+export function isUsableTcgdexAsset(url: string | null | undefined): boolean {
+  return typeof url === 'string' && url.length > 0 && !url.includes('/univ/');
+}
+
+
 export const listSets = () => get<TcgdexSetBrief[]>('/sets');
 export const getSet = (id: string) => get<TcgdexSet>(`/sets/${encodeURIComponent(id)}`);
 export const getCard = (id: string) => get<TcgdexCard>(`/cards/${encodeURIComponent(id)}`);

@@ -10,7 +10,8 @@
     "start": "node dist/index.js",
     "sync:prod": "node dist/jobs/syncAll.js",
     "backfill": "ts-node-dev --transpile-only src/jobs/backfillDetails.ts",
-    "backfill:prod": "node dist/jobs/backfillDetails.js"
+    "backfill:prod": "node dist/jobs/backfillDetails.js",
+    "sweep": "ts-node-dev --transpile-only src/jobs/fallbackSweep.ts"
   },
   "keywords": [],
   "author": "",
@@ -20,7 +21,8 @@
     "cors": "^2.8.6",
     "dotenv": "^18.0.3",
     "express": "^5.2.1",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "@supabase/supabase-js": "^2.109.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

@@ -1,5 +1,7 @@
 import { pool } from './db';
-import { getCard, getSet, listSets, TcgdexCard } from './tcgdex';
+import { deleteFallback } from './storage';
+import { getCard, getSet, isUsableTcgdexAsset, listSets, TcgdexCard } from './tcgdex';
+
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const str = (v: unknown, max = 300): string | null =>
@@ -54,6 +56,7 @@ export async function syncSet(setId: string): Promise<void> {
       );
     }
     await client.query('COMMIT');
+    await reconcileFallback('catalog.sets', 'logo_path', 'logo_source', set.id, str(set.logo));
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -108,6 +111,7 @@ export async function syncCard(cardId: string): Promise<void> {
       value, currency,
     ],
   );
+  await reconcileFallback('catalog.cards', 'image_path', 'image_source', card.id, str(card.image, 500));
 }
 
 export async function syncAllSets(): Promise<{ discovered: number; updated: number }> {
@@ -180,4 +184,39 @@ export async function syncMissingDetails(
     console.log(`details: ${done} ok, ${failed} failed`);
   }
   return { done, failed };
+}
+
+async function reconcileFallback(
+  table: 'catalog.sets' | 'catalog.cards',
+  pathCol: string,
+  sourceCol: string,
+  id: string,
+  newTcgdexUrl: string | null,
+): Promise<void> {
+  if (!isUsableTcgdexAsset(newTcgdexUrl)) return;
+
+  const { rows } = await pool.query(`SELECT ${pathCol} AS path FROM ${table} WHERE id = $1`, [id]);
+  const oldPath: string | null = rows[0]?.path ?? null;
+  if (!oldPath) return;
+
+  await pool.query(`UPDATE ${table} SET ${pathCol} = NULL, ${sourceCol} = NULL WHERE id = $1`, [id]);
+  try {
+    await deleteFallback(oldPath);
+  } catch (err) {
+    // DB is already correct (fallback cleared) — an orphaned Storage object
+    // is cheap and can be swept later; don't fail the sync over it.
+    console.error(`Storage delete failed for ${oldPath} (non-fatal):`, err);
+  }
+}
+
+export async function recheckFallbackLogos(): Promise<{ checked: number; restored: number }> {
+  const { rows } = await pool.query(`SELECT id FROM catalog.sets WHERE logo_path IS NOT NULL`);
+  let restored = 0;
+  for (const row of rows) {
+    const before = await pool.query(`SELECT logo_path FROM catalog.sets WHERE id = $1`, [row.id]);
+    await syncSet(row.id);
+    const after = await pool.query(`SELECT logo_path FROM catalog.sets WHERE id = $1`, [row.id]);
+    if (before.rows[0]?.logo_path && !after.rows[0]?.logo_path) restored++;
+  }
+  return { checked: rows.length, restored };
 }

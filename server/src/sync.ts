@@ -203,8 +203,6 @@ async function reconcileFallback(
   try {
     await deleteFallback(oldPath);
   } catch (err) {
-    // DB is already correct (fallback cleared) — an orphaned Storage object
-    // is cheap and can be swept later; don't fail the sync over it.
     console.error(`Storage delete failed for ${oldPath} (non-fatal):`, err);
   }
 }

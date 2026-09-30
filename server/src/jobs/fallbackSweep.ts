@@ -1,8 +1,15 @@
 // Batch-fills missing/broken card images and set logos from PokeWallet.
 // Run manually: `npm run sweep -- --limit=5000`
+// Cards only (skip logo phase entirely): `npm run sweep -- --cards-only`
 // Debug a small sample without writing anything: `npm run sweep -- --debug`
-// Resumable: only ever selects rows still missing a fallback, so a run cut
-// short by the request budget or a 429 picks up exactly where it left off.
+//
+// Resumable: rows with a fallback already stamped as "tried" within the
+// last 7 days (image_fallback_checked_at / logo_fallback_checked_at) are
+// excluded from selection, so a permanent miss (no PokeWallet match exists)
+// doesn't get re-attempted — and re-burn the request budget — every single
+// run. A row only re-enters rotation once the cooldown expires, in case
+// PokeWallet adds coverage later.
+//
 // PokeWallet free tier is 100 requests/hour, 1000/day — REQUEST_BUDGET stops
 // the job cleanly before hitting the hourly cap rather than after a 429.
 import { pool } from '../db';
@@ -21,6 +28,7 @@ import { isUsableTcgdexAsset } from '../tcgdex';
 
 const DELAY_MS = 200;
 const REQUEST_BUDGET = 90;
+const RETRY_COOLDOWN = '7 days';
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -45,11 +53,15 @@ function localIdMatches(tcgdexLocalId: string, pwCardNumber: string | null): boo
 
 type PwSetCardList = Awaited<ReturnType<typeof getPwSetCards>>;
 
-export async function sweepCards(pwSets: PwSet[], limit: number): Promise<{ done: number; failed: number; skipped: number; stopped: boolean }> {
+export async function sweepCards(
+  pwSets: PwSet[],
+  limit: number,
+): Promise<{ done: number; failed: number; skipped: number; stopped: boolean }> {
   const { rows } = await pool.query(
     `SELECT c.id, c.local_id, c.set_id, s.name AS set_name
      FROM catalog.cards c JOIN catalog.sets s ON s.id = c.set_id
      WHERE c.image_path IS NULL AND c.image_base IS NULL
+       AND (c.image_fallback_checked_at IS NULL OR c.image_fallback_checked_at < now() - interval '${RETRY_COOLDOWN}')
      ORDER BY c.set_id, c.local_id
      LIMIT $1`,
     [limit],
@@ -58,6 +70,9 @@ export async function sweepCards(pwSets: PwSet[], limit: number): Promise<{ done
   let done = 0, failed = 0, skipped = 0, stopped = false;
   const pwSetCache = new Map<string, PwSet | null>();
   const pwCardListCache = new Map<string, PwSetCardList | null>();
+
+  const markChecked = (cardId: string) =>
+    pool.query(`UPDATE catalog.cards SET image_fallback_checked_at = now() WHERE id = $1`, [cardId]);
 
   for (const row of rows) {
     if (budgetExceeded()) { stopped = true; break; }
@@ -68,6 +83,7 @@ export async function sweepCards(pwSets: PwSet[], limit: number): Promise<{ done
     const pwSet = pwSetCache.get(row.set_id)!;
     if (!pwSet) {
       skipped++;
+      await markChecked(row.id);
       continue;
     }
 
@@ -101,6 +117,7 @@ export async function sweepCards(pwSets: PwSet[], limit: number): Promise<{ done
     );
     if (!match) {
       failed++;
+      await markChecked(row.id);
       continue;
     }
 
@@ -109,7 +126,11 @@ export async function sweepCards(pwSets: PwSet[], limit: number): Promise<{ done
     try {
       const img = await fetchImageById(match.id);
       await sleep(DELAY_MS);
-      if (!img) { failed++; continue; }
+      if (!img) {
+        failed++;
+        await markChecked(row.id);
+        continue;
+      }
 
       const path = `cards/${row.id}.webp`;
       await uploadFallback(path, img.bytes, img.contentType);
@@ -131,20 +152,34 @@ export async function sweepCards(pwSets: PwSet[], limit: number): Promise<{ done
   return { done, failed, skipped, stopped };
 }
 
-export async function sweepSetLogos(pwSets: PwSet[], limit: number): Promise<{ done: number; failed: number; skipped: number; stopped: boolean }> {
+export async function sweepSetLogos(
+  pwSets: PwSet[],
+  limit: number,
+): Promise<{ done: number; failed: number; skipped: number; stopped: boolean }> {
   const { rows } = await pool.query(
-    `SELECT id, name, logo FROM catalog.sets WHERE logo_path IS NULL LIMIT $1`,
+    `SELECT id, name, logo FROM catalog.sets
+     WHERE logo_path IS NULL
+       AND (logo_fallback_checked_at IS NULL OR logo_fallback_checked_at < now() - interval '${RETRY_COOLDOWN}')
+     ORDER BY id
+     LIMIT $1`,
     [limit],
   );
 
   let done = 0, failed = 0, skipped = 0, stopped = false;
+
+  const markChecked = (setId: string) =>
+    pool.query(`UPDATE catalog.sets SET logo_fallback_checked_at = now() WHERE id = $1`, [setId]);
 
   for (const row of rows) {
     if (isUsableTcgdexAsset(row.logo)) continue;
     if (budgetExceeded()) { stopped = true; break; }
 
     const pwSet = findPwSet(pwSets, row.id, row.name);
-    if (!pwSet) { skipped++; continue; }
+    if (!pwSet) {
+      skipped++;
+      await markChecked(row.id);
+      continue;
+    }
 
     try {
       const logo = await fetchSetLogo(pwSet.set_id);
@@ -152,6 +187,7 @@ export async function sweepSetLogos(pwSets: PwSet[], limit: number): Promise<{ d
       if (!logo) {
         failed++;
         console.log(`No logo image at PokeWallet for set ${row.id} (pw set_id=${pwSet.set_id})`);
+        await markChecked(row.id);
         continue;
       }
       const path = `sets/${row.id}/logo.webp`;
@@ -224,6 +260,7 @@ async function main() {
   const limitArg = args.find((a) => a.startsWith('--limit='));
   const limit = limitArg ? Number(limitArg.split('=')[1]) : 500;
   const debug = args.includes('--debug');
+  const cardsOnly = args.includes('--cards-only');
 
   const pwSets = await listPwSets();
   console.log(`Loaded ${pwSets.length} PokeWallet sets for matching.`);
@@ -238,6 +275,11 @@ async function main() {
     `Cards: ${cards.done} ok / ${cards.failed} failed / ${cards.skipped} no set match` +
     (cards.stopped ? ' (stopped early — budget or rate limit)' : ''),
   );
+
+  if (cardsOnly) {
+    console.log(`Total PokeWallet requests this run: ${requestStats.count}`);
+    return;
+  }
 
   if (cards.stopped) {
     console.log(`Skipping logo sweep this run — request budget already spent. Re-run later to continue.`);

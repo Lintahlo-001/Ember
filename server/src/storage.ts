@@ -33,3 +33,11 @@ export function publicUrl(path: string): string {
 export function rarityIconUrl(path: string): string {
   return storageClient.storage.from('rarity-icons').getPublicUrl(path).data.publicUrl;
 }
+
+export async function deleteFallbacks(paths: string[]): Promise<void> {
+  const BATCH = 100;
+  for (let i = 0; i < paths.length; i += BATCH) {
+    const { error } = await storageClient.storage.from(BUCKET).remove(paths.slice(i, i + BATCH));
+    if (error) throw new Error(`Storage batch delete failed: ${error.message}`);
+  }
+}

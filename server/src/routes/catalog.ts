@@ -53,7 +53,7 @@ catalogRouter.get('/sets', async (_req, res) => {
     rows.map((s) => ({
       ...s,
       logo_url: resolveAsset(s.logo, s.logo_path),
-      symbol_url: resolveAsset(s.symbol, null),
+      symbol_url: resolveAsset(s.symbol, s.symbol_path),
     })),
   );
 });
@@ -90,7 +90,7 @@ catalogRouter.get('/sets/:setId', async (req, res) => {
   res.json({
     ...row,
     logo_url: resolveAsset(row.logo, row.logo_path),
-    symbol_url: resolveAsset(row.symbol, null),
+    symbol_url: resolveAsset(row.symbol, row.symbol_path),
     cards: cards.rows.map(toListItem),
   });
 });
@@ -149,7 +149,7 @@ catalogRouter.get('/cards/:cardId', async (req, res) => {
 
   const row = card.rows[0];
   const set = await pool.query(
-    'SELECT name, symbol, card_count_official, card_count_total FROM catalog.sets WHERE id = $1',
+    'SELECT name, symbol, symbol_path, card_count_official, card_count_total FROM catalog.sets WHERE id = $1',
     [row.set_id],
   );
   const rarity = row.rarity
@@ -163,7 +163,7 @@ catalogRouter.get('/cards/:cardId', async (req, res) => {
     price_market: num(row.price_market),
     image_url: cardImage(row),
     set_name: s?.name ?? null,
-    set_symbol_url: s ? resolveAsset(s.symbol, null) : null,
+    set_symbol_url: s ? resolveAsset(s.symbol, s.symbol_path) : null,
     card_count_official: s?.card_count_official ?? null,
     rarity_icon_url: iconPath ? rarityIconUrl(iconPath) : null,
     variant_options: variantOptions(row.variants),

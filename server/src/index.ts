@@ -1,16 +1,24 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express, { NextFunction, Request, Response } from 'express';
+import { requireAuth } from './auth';
 import { pool } from './db';
 import { catalogRouter } from './routes/catalog';
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
 
-// Confirms Express can actually reach Postgres through the pooler
+const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:8081')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+app.use(cors({ origin: allowedOrigins }));
+app.use(express.json({ limit: '10kb' }));
+
+// Public on purpose: Render's health check + confirms Postgres is reachable.
 app.get('/health', async (_req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
@@ -21,9 +29,9 @@ app.get('/health', async (_req, res) => {
   }
 });
 
+app.use(requireAuth);
 app.use(catalogRouter);
 
-// Last-resort handler: log details server-side, never leak them to the client.
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });

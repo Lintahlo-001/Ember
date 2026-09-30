@@ -76,7 +76,16 @@ function extractYear(s: string): string | null {
   return m ? m[0] : null;
 }
 
+export const pwSetKey = (s: PwSet): string => s.set_id;
+
 export function findPwSet(pwSets: PwSet[], tcgdexSetId: string, tcgdexSetName: string): PwSet | null {
+
+  const override = PW_SET_OVERRIDES[24837];
+  if (override) {
+    const hit = pwSets.find((s) => s.set_id === override || s.set_code === override);
+    if (hit) return hit;
+  }
+
   const byCode = pwSets.filter((s) => s.set_code?.toLowerCase() === tcgdexSetId.toLowerCase());
   const byName = pwSets.filter((s) => s.name.toLowerCase() === tcgdexSetName.toLowerCase());
   const exact = byCode.length > 0 ? byCode : byName;
@@ -188,3 +197,7 @@ export async function fetchSetLogo(pwSetId: string): Promise<{ bytes: ArrayBuffe
 export async function fetchImageById(pwCardId: string): Promise<{ bytes: ArrayBuffer; contentType: string } | null> {
   return getBinary(`/images/${pwCardId}?size=high`);
 }
+
+  const PW_SET_OVERRIDES: Record<string, string> = {
+    '30th-c': '24837,',
+  };

@@ -16,11 +16,13 @@ import { pool } from '../db';
 import {
   fetchImageById,
   fetchSetLogo,
+  findPwCard,
   findPwSet,
   getPwSetCards,
   listPwSets,
   PwRateLimited,
   PwSet,
+  pwSetKey,
   requestStats,
 } from '../pokewallet';
 import { uploadFallback } from '../storage';
@@ -87,7 +89,7 @@ export async function sweepCards(
       continue;
     }
 
-    const codeOrId = pwSet.set_code ?? pwSet.set_id;
+    const codeOrId = pwSetKey(pwSet);
 
     if (!pwCardListCache.has(codeOrId)) {
       if (budgetExceeded()) { stopped = true; break; }
@@ -231,7 +233,7 @@ async function runDebug(pwSets: PwSet[]) {
     );
     if (!pwSet) continue;
 
-    const codeOrId = pwSet.set_code ?? pwSet.set_id;
+    const codeOrId = pwSetKey(pwSet);
     if (!pwCardListCache.has(codeOrId)) {
       try {
         pwCardListCache.set(codeOrId, await getPwSetCards(codeOrId));
@@ -255,6 +257,35 @@ async function runDebug(pwSets: PwSet[]) {
   }
 }
 
+async function runDebugSet(pwSets: PwSet[], setId: string) {
+  const { rows: setRows } = await pool.query(`SELECT id, name FROM catalog.sets WHERE id = $1`, [setId]);
+  const set = setRows[0];
+  if (!set) { console.log(`Set ${setId} is not in catalog.sets`); return; }
+
+  const pwSet = findPwSet(pwSets, set.id, set.name);
+  console.log(`TCGdex: ${set.id} "${set.name}" -> PokeWallet: ${
+    pwSet ? `${pwSet.name} (id=${pwSet.set_id}, code=${pwSet.set_code}, lang=${pwSet.language})` : 'NONE'
+  }`);
+  if (!pwSet) return;
+
+  const pwCards = await getPwSetCards(pwSetKey(pwSet));
+  const { rows } = await pool.query(
+    `SELECT id, local_id, name FROM catalog.cards WHERE set_id = $1
+     ORDER BY NULLIF(regexp_replace(local_id, '\\D', '', 'g'), '')::int NULLS LAST, local_id`,
+    [setId],
+  );
+  console.log(`PokeWallet cards: ${pwCards.length} / TCGdex cards: ${rows.length}`);
+  console.log('PokeWallet sample:', pwCards.slice(0, 5).map((c) => `${c.card_info.card_number} | ${c.card_info.name}`));
+
+  let matched = 0;
+  for (const r of rows) {
+    const m = findPwCard(pwCards, r.local_id, r.name);
+    if (m) matched++;
+    else console.log(`  NO MATCH: ${r.id} (local_id=${r.local_id}, "${r.name}")`);
+  }
+  console.log(`Matched ${matched}/${rows.length}`);
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const limitArg = args.find((a) => a.startsWith('--limit='));
@@ -264,6 +295,19 @@ async function main() {
 
   const pwSets = await listPwSets();
   console.log(`Loaded ${pwSets.length} PokeWallet sets for matching.`);
+
+  const findArg = args.find((a) => a.startsWith('--find-set='));
+  if (findArg) {
+    const kw = findArg.split('=')[1].toLowerCase();
+    const hits = pwSets.filter((s) => s.name.toLowerCase().includes(kw) || (s.set_code ?? '').toLowerCase().includes(kw));
+    console.log(JSON.stringify(hits, null, 2));
+    return;
+  }
+  const dbgSetArg = args.find((a) => a.startsWith('--debug-set='));
+  if (dbgSetArg) {
+    await runDebugSet(pwSets, dbgSetArg.split('=')[1]);
+    return;
+  }
 
   if (debug) {
     await runDebug(pwSets);

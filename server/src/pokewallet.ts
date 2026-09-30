@@ -6,7 +6,17 @@ function apiKey(): string {
   return key;
 }
 
-export class PwRateLimited extends Error {}
+export class PwRateLimited extends Error {
+  constructor(path: string, public retryAfterSec: number | null = null) {
+    super(`PokeWallet rate limited: ${path}`);
+    this.name = 'PwRateLimited';
+  }
+}
+
+function rateLimited(res: Response, path: string): PwRateLimited {
+  const ra = Number(res.headers.get('retry-after'));
+  return new PwRateLimited(path, Number.isFinite(ra) && ra > 0 ? ra : null);
+}
 
 export const requestStats = { count: 0 };
 
@@ -16,7 +26,7 @@ async function get<T>(path: string): Promise<T> {
     headers: { 'X-API-Key': apiKey() },
     signal: AbortSignal.timeout(15_000),
   });
-  if (res.status === 429) throw new PwRateLimited(path);
+  if (res.status === 429) throw rateLimited(res, path);
   if (!res.ok) throw new Error(`PokeWallet ${res.status} for ${path}`);
   return (await res.json()) as T;
 }
@@ -28,7 +38,7 @@ async function getBinary(path: string): Promise<{ bytes: ArrayBuffer; contentTyp
     signal: AbortSignal.timeout(15_000),
   });
   if (res.status === 404) return null;
-  if (res.status === 429) throw new PwRateLimited(path);
+  if (res.status === 429) throw rateLimited(res, path);
   if (!res.ok) throw new Error(`PokeWallet ${res.status} for ${path}`);
   return { bytes: await res.arrayBuffer(), contentType: res.headers.get('content-type') ?? 'image/jpeg' };
 }
@@ -90,44 +100,85 @@ export function findPwSet(pwSets: PwSet[], tcgdexSetId: string, tcgdexSetName: s
   return bestScore > 0 ? best : null;
 }
 
-type PwSetCard = {
+export type PwSetCard = {
   id: string;
-  card_info: {
-    name: string | null;
-    card_number: string | null;
-    product_type: string;
-  };
+  card_info: { name: string | null; card_number: string | null; product_type: string };
 };
+
 type PwSetDetail = {
   success: boolean;
   set: { name: string; set_code: string | null; set_id: string };
   cards: PwSetCard[];
+  pagination?: { page?: number; total_pages?: number };
+  [key: string]: unknown;
 };
 
+export async function getPwSetPage(pwSetCodeOrId: string, page = 1): Promise<PwSetDetail> {
+  const base = `/sets/${encodeURIComponent(pwSetCodeOrId)}`;
+  return get<PwSetDetail>(page === 1 ? base : `${base}?page=${page}`);
+}
+
+const MAX_PAGES = 15;
+
 export async function getPwSetCards(pwSetCodeOrId: string): Promise<PwSetCard[]> {
-  const { cards } = await get<PwSetDetail>(`/sets/${encodeURIComponent(pwSetCodeOrId)}`);
-  return cards;
+  const byId = new Map<string, PwSetCard>();
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const d = await getPwSetPage(pwSetCodeOrId, page);
+    const before = byId.size;
+    for (const c of d.cards ?? []) byId.set(c.id, c);
+    const totalPages = Number(d.pagination?.total_pages ?? d.total_pages ?? 1);
+    if (page >= totalPages || byId.size === before) break;
+  }
+  return [...byId.values()];
 }
 
-function localIdMatches(tcgdexLocalId: string, pwCardNumber: string | null): boolean {
-  if (!pwCardNumber) return false;
-  const numerator = pwCardNumber.split('/')[0].trim();
-  const a = Number(tcgdexLocalId);
-  const b = Number(numerator);
-  if (Number.isFinite(a) && Number.isFinite(b)) return a === b;
-  return tcgdexLocalId.trim() === numerator; // non-numeric ids (rare promos etc.)
+function normId(s: string): string {
+  return s.split('/')[0].trim().toLowerCase().replace(/^([a-z]*)0+(?=\d)/, '$1');
 }
 
-export async function fetchCardImage(
-  pwSetCodeOrId: string,
+function cleanName(s: string | null): string {
+  return (s ?? '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s*-\s*[a-z]*\d+\s*$/, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function nameScore(a: string, b: string): number {
+  if (!a || !b) return 0;
+  if (a === b) return 3;
+  if (a.includes(b) || b.includes(a)) return 2;
+  const words = new Set(a.split(' '));
+  return b.split(' ').some((w) => words.has(w)) ? 1 : 0;
+}
+
+function cardNumbers(c: PwSetCard): string[] {
+  const out: string[] = [];
+  if (c.card_info.card_number) out.push(normId(c.card_info.card_number));
+  const m = c.card_info.name?.match(/-\s*([A-Za-z]*\d+)\s*$/);
+  if (m) out.push(normId(m[1]));
+  return out;
+}
+
+export function findPwCard(
+  cards: PwSetCard[],
   tcgdexLocalId: string,
-): Promise<{ bytes: ArrayBuffer; contentType: string } | null> {
-  const cards = await getPwSetCards(pwSetCodeOrId);
-  const match = cards.find(
-    (c) => c.card_info.product_type === 'card' && localIdMatches(tcgdexLocalId, c.card_info.card_number),
+  tcgdexName: string | null,
+): PwSetCard | null {
+  const want = normId(tcgdexLocalId);
+  const numMatches = cards.filter(
+    (c) => c.card_info.product_type === 'card' && cardNumbers(c).includes(want),
   );
-  if (!match) return null;
-  return getBinary(`/images/${match.id}?size=high`);
+  if (numMatches.length === 0) return null;
+  const wantName = cleanName(tcgdexName);
+  if (!wantName) return numMatches[0];
+
+  const scored = numMatches
+    .map((c) => ({ c, s: nameScore(cleanName(c.card_info.name), wantName) }))
+    .sort((a, b) => b.s - a.s);
+  if (scored[0].s === 0 && scored.length > 1) return null;
+  return scored[0].c;
 }
 
 export async function fetchSetLogo(pwSetId: string): Promise<{ bytes: ArrayBuffer; contentType: string } | null> {

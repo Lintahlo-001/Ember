@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: ember-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: POKEWALLET_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
+  # Daily catalog sync. Render cron jobs are paid, so it's commented out until
+  # you want it; uncomment and re-sync the blueprint.
+  # - type: cron
+  #   name: ember-sync
+  #   runtime: node
+  #   plan: starter
+  #   schedule: "0 3 * * *"
+  #   rootDir: server
+  #   buildCommand: npm install --include=dev && npm run build
+  #   startCommand: npm run sync:prod
+  #   envVars: (same keys as ember-api, minus CORS_ORIGINS)

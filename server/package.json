@@ -11,7 +11,8 @@
     "sync:prod": "node dist/jobs/syncAll.js",
     "backfill": "ts-node-dev --transpile-only src/jobs/backfillDetails.ts",
     "backfill:prod": "node dist/jobs/backfillDetails.js",
-    "sweep": "ts-node-dev --transpile-only src/jobs/fallbackSweep.ts"
+    "sweep": "ts-node-dev --transpile-only src/jobs/fallbackSweep.ts",
+    "purge:excluded": "ts-node-dev --transpile-only src/jobs/purgeExcluded.ts"
   },
   "keywords": [],
   "author": "",

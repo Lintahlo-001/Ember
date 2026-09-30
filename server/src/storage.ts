@@ -29,3 +29,7 @@ export function publicUrl(path: string): string {
   const { data } = storageClient.storage.from(BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
+
+export function rarityIconUrl(path: string): string {
+  return storageClient.storage.from('rarity-icons').getPublicUrl(path).data.publicUrl;
+}

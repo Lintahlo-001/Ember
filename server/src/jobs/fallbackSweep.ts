@@ -294,6 +294,8 @@ async function main() {
   console.log(`Total PokeWallet requests this run: ${requestStats.count}`);
 }
 
-main()
-  .catch((err) => { console.error('Sweep failed:', err); process.exitCode = 1; })
-  .finally(() => pool.end());
+if (require.main === module) {
+  main()
+    .catch((err) => { console.error('Sweep failed:', err); process.exitCode = 1; })
+    .finally(() => pool.end());
+}

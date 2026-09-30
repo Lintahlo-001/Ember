@@ -44,6 +44,25 @@ export function isUsableTcgdexAsset(url: string | null | undefined): boolean {
   return typeof url === 'string' && url.length > 0 && !url.includes('/univ/');
 }
 
+export const EXCLUDED_SERIES = ['tcgp'] as const;
+
+export class ExcludedSeries extends TcgdexNotFound {}
+
+export type TcgdexSerie = { id: string; name: string; sets?: TcgdexSetBrief[] };
+export const getSerie = (id: string) => get<TcgdexSerie>(`/series/${encodeURIComponent(id)}`);
+
+export function isExcludedSerie(id: string | null | undefined): boolean {
+  return !!id && (EXCLUDED_SERIES as readonly string[]).includes(id);
+}
+
+export async function listExcludedSetIds(): Promise<Set<string>> {
+  const ids = new Set<string>();
+  for (const serieId of EXCLUDED_SERIES) {
+    const serie = await getSerie(serieId);
+    for (const s of serie.sets ?? []) ids.add(s.id);
+  }
+  return ids;
+}
 
 export const listSets = () => get<TcgdexSetBrief[]>('/sets');
 export const getSet = (id: string) => get<TcgdexSet>(`/sets/${encodeURIComponent(id)}`);

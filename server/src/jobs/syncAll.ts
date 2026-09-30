@@ -1,3 +1,4 @@
+// Run once a day (Render Cron Job -> `npm run sync:prod`) or manually: `npm run sync`.
 import { pool } from '../db';
 import { listPwSets, PwRateLimited, requestStats } from '../pokewallet';
 import { recheckFallbackLogos, refreshStaleCards, syncAllSets, syncMissingDetails } from '../sync';

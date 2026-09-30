@@ -1,6 +1,15 @@
 import { pool } from './db';
 import { deleteFallback } from './storage';
-import { getCard, getSet, isUsableTcgdexAsset, listSets, TcgdexCard } from './tcgdex';
+import {
+  ExcludedSeries,
+  getCard,
+  getSet,
+  isExcludedSerie,
+  isUsableTcgdexAsset,
+  listExcludedSetIds,
+  listSets,
+  TcgdexCard,
+} from './tcgdex';
 
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -11,6 +20,8 @@ const int = (v: unknown): number =>
 
 export async function syncSet(setId: string): Promise<void> {
   const set = await getSet(setId);
+  if (isExcludedSerie(set.serie?.id)) throw new ExcludedSeries(setId);
+
   const cards = (set.cards ?? []).filter((c) => str(c.id) && str(c.name));
   const releaseDate = set.releaseDate && DATE_RE.test(set.releaseDate) ? set.releaseDate : null;
 
@@ -116,12 +127,14 @@ export async function syncCard(cardId: string): Promise<void> {
 
 export async function syncAllSets(): Promise<{ discovered: number; updated: number }> {
   const remote = await listSets();
+  const excluded = await listExcludedSetIds();
   const local = await pool.query('SELECT id, card_count_total FROM catalog.sets');
   const known = new Map<string, number>(local.rows.map((r) => [r.id, r.card_count_total]));
 
   let discovered = 0;
   let updated = 0;
   for (const s of remote) {
+    if (excluded.has(s.id)) continue;
     const isNew = !known.has(s.id);
     const changed = !isNew && known.get(s.id) !== int(s.cardCount?.total);
     if (!isNew && !changed) continue;
@@ -129,6 +142,7 @@ export async function syncAllSets(): Promise<{ discovered: number; updated: numb
       await syncSet(s.id);
       isNew ? discovered++ : updated++;
     } catch (err) {
+      if (err instanceof ExcludedSeries) continue;
       console.error(`syncSet failed for ${s.id}:`, err);
     }
   }

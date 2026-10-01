@@ -11,9 +11,12 @@ const ID_RE = /^[A-Za-z0-9._-]{1,40}$/;
 const VARIANT_RE = /^[A-Za-z0-9_-]{1,40}$/;
 const SEARCH_LIMIT = 200;
 
+const IMG_EXT_RE = /\.(png|webp|jpe?g)$/i;
+const withExt = (url: string) => (IMG_EXT_RE.test(url) ? url : `${url}.webp`);
+
 function resolveAsset(tcgdexUrl: string | null, storagePath: string | null): string | null {
   if (storagePath) return publicUrl(storagePath);
-  if (isUsableTcgdexAsset(tcgdexUrl)) return tcgdexUrl;
+  if (tcgdexUrl && isUsableTcgdexAsset(tcgdexUrl)) return withExt(tcgdexUrl);
   return null;
 }
 

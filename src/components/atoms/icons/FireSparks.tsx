@@ -57,7 +57,7 @@ export default function FireSparks({ size = 320 }: { size?: number }) {
   const radius = size / 2 - RADIUS_MARGIN;
 
   useEffect(() => {
-    rotation.value = withRepeat(withTiming(360, { duration: 7000, easing: Easing.linear }), -1, false);
+    rotation.value = withRepeat(withTiming(360, { duration: 14000, easing: Easing.linear }), -1, false);
   }, [rotation]);
 
   const orbitStyle = useAnimatedStyle(() => ({

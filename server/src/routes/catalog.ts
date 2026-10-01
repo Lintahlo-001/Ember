@@ -110,23 +110,6 @@ catalogRouter.get('/cards/suggest', async (req, res) => {
   }
   await ensureLoaded();
   res.json(suggest(q));
-
-  const esc = q.replace(/[\\%_]/g, '\\$&');
-  const { rows } = await pool.query(
-    `(SELECT name AS label, 'card' AS kind FROM catalog.cards
-       WHERE name ILIKE $1 ESCAPE '\\'
-       GROUP BY name
-       ORDER BY (name ILIKE $2) DESC, length(name), name
-       LIMIT 6)
-     UNION ALL
-     (SELECT illustrator AS label, 'artist' AS kind FROM catalog.cards
-       WHERE illustrator ILIKE $1 ESCAPE '\\'
-       GROUP BY illustrator
-       ORDER BY (illustrator ILIKE $2) DESC, illustrator
-       LIMIT 3)`,
-    [`%${esc}%`, `${esc}%`],
-  );
-  res.json(rows);
 });
 
 catalogRouter.get('/cards/search', async (req, res) => {

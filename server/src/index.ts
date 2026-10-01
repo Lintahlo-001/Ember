@@ -4,7 +4,7 @@ import express, { NextFunction, Request, Response } from 'express';
 import { requireAuth } from './auth';
 import { pool } from './db';
 import { catalogRouter } from './routes/catalog';
-
+import { internalSyncRouter } from './routes/internalSync';
 dotenv.config();
 
 const app = express();
@@ -29,6 +29,7 @@ app.get('/health', async (_req, res) => {
   }
 });
 
+app.use(internalSyncRouter);
 app.use(requireAuth);
 app.use(catalogRouter);
 

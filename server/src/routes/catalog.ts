@@ -95,6 +95,37 @@ catalogRouter.get('/sets/:setId', async (req, res) => {
   });
 });
 
+const SUGGEST_MIN_CHARS = 2;
+
+catalogRouter.get('/cards/suggest', async (req, res) => {
+  const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  if (q.length > 100) {
+    res.status(400).json({ error: 'Query too long' });
+    return;
+  }
+  if (q.length < SUGGEST_MIN_CHARS) {
+    res.json([]);
+    return;
+  }
+
+  const esc = q.replace(/[\\%_]/g, '\\$&');
+  const { rows } = await pool.query(
+    `(SELECT name AS label, 'card' AS kind FROM catalog.cards
+       WHERE name ILIKE $1 ESCAPE '\\'
+       GROUP BY name
+       ORDER BY (name ILIKE $2) DESC, length(name), name
+       LIMIT 6)
+     UNION ALL
+     (SELECT illustrator AS label, 'artist' AS kind FROM catalog.cards
+       WHERE illustrator ILIKE $1 ESCAPE '\\'
+       GROUP BY illustrator
+       ORDER BY (illustrator ILIKE $2) DESC, illustrator
+       LIMIT 3)`,
+    [`%${esc}%`, `${esc}%`],
+  );
+  res.json(rows);
+});
+
 catalogRouter.get('/cards/search', async (req, res) => {
   const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   const artist = typeof req.query.artist === 'string' ? req.query.artist.trim() : '';
@@ -113,7 +144,7 @@ catalogRouter.get('/cards/search', async (req, res) => {
     `SELECT id, set_id, local_id, name, image_base, image_path, rarity, illustrator,
             price_market, price_currency
      FROM catalog.cards
-     WHERE ($1::text IS NULL OR name ILIKE $1 ESCAPE '\\')
+     WHERE ($1::text IS NULL OR name ILIKE $1 ESCAPE '\\' OR illustrator ILIKE $1 ESCAPE '\\')
        AND ($2::text IS NULL OR illustrator = $2)
      ORDER BY name, set_id, local_id
      LIMIT $3`,

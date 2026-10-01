@@ -46,7 +46,6 @@ export class ApiError extends Error {
 async function request<T>(path: string): Promise<T> {
   if (!BASE) throw new Error('EXPO_PUBLIC_API_URL is not set. Check your .env file.');
 
-  // getSession() refreshes an expired token for us.
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new ApiError(401, 'You are signed out. Log in again.');
@@ -81,4 +80,8 @@ export const api = {
     if (params.artist) qs.set('artist', params.artist);
     return request<{ results: CardListItem[]; truncated: boolean }>(`/cards/search?${qs.toString()}`);
   },
+  suggest: (q: string) =>
+  request<Suggestion[]>(`/cards/suggest?q=${encodeURIComponent(q)}`),
 };
+
+export type Suggestion = { label: string; kind: 'card' | 'artist' };

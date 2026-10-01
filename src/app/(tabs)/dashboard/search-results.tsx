@@ -2,12 +2,14 @@ import Screen from '@/src/components/layout/Screen';
 import Pill from '@/src/components/molecules/Pill';
 import ScreenHeader from '@/src/components/molecules/ScreenHeader';
 import SearchBar from '@/src/components/molecules/SearchBar';
+import SearchSuggestions from '@/src/components/molecules/SearchSuggestions';
 import SortFilterBar from '@/src/components/molecules/SortFilterBar';
 import StatusView from '@/src/components/molecules/StatusView';
 import CardGrid from '@/src/components/organisms/CardGrid';
 import { useCardListView } from '@/src/hooks/useCardListView';
 import { useOwnedTotals } from '@/src/hooks/useOwnedTotals';
-import { api, type CardListItem } from '@/src/lib/api';
+import { useSearchSuggestions } from '@/src/hooks/useSearchSuggestions';
+import { api, type CardListItem, type Suggestion } from '@/src/lib/api';
 import theme from '@/src/theme/theme';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -26,6 +28,25 @@ export default function SearchResults() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [showSuggest, setShowSuggest] = useState(false);
+  const suggestions = useSearchSuggestions(input, showSuggest);
+
+  const submit = () => {
+    setShowSuggest(false);
+    setQuery(input.trim());
+  };
+
+  const pickSuggestion = (s: Suggestion) => {
+    setShowSuggest(false);
+    if (s.kind === 'artist') {
+      setArtist(s.label);
+      setInput('');
+      setQuery('');
+    } else {
+      setInput(s.label);
+      setQuery(s.label);
+    }
+  };
 
   useEffect(() => {
     if (!query && !artist) {
@@ -58,10 +79,14 @@ export default function SearchResults() {
     <View style={styles.header}>
       <SearchBar
         value={input}
-        onChangeText={setInput}
-        onSubmit={() => setQuery(input.trim())}
+        onChangeText={(t) => {
+          setInput(t);
+          setShowSuggest(true);
+        }}
+        onSubmit={submit}
         placeholder="Search a card"
       />
+      <SearchSuggestions suggestions={suggestions} onPick={pickSuggestion} />
       {artist ? (
         <View style={styles.chipRow}>
           <Pill

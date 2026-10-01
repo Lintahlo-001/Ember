@@ -2,12 +2,14 @@ import Button from '@/src/components/atoms/Button';
 import Icon from '@/src/components/atoms/Icon';
 import Screen from '@/src/components/layout/Screen';
 import SearchBar from '@/src/components/molecules/SearchBar';
+import SearchSuggestions from '@/src/components/molecules/SearchSuggestions';
 import SetCard from '@/src/components/molecules/SetCard';
 import StatusView from '@/src/components/molecules/StatusView';
 import { useAuth } from '@/src/context/AuthContext';
-import { api, type SetBrief } from '@/src/lib/api';
+import { useSearchSuggestions } from '@/src/hooks/useSearchSuggestions';
+import { api, type SetBrief, type Suggestion } from '@/src/lib/api';
 import theme from '@/src/theme/theme';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
@@ -37,6 +39,19 @@ export default function Dashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+    const suggestions = useSearchSuggestions(query);
+
+  useFocusEffect(
+    useCallback(() => () => setQuery(''), []),
+  );
+
+  const pickSuggestion = (s: Suggestion) => {
+    router.push({
+      pathname: '/(tabs)/dashboard/search-results',
+      params: s.kind === 'artist' ? { artist: s.label } : { query: s.label },
+    });
+  };
 
   const submitSearch = () => {
     const q = query.trim();
@@ -75,6 +90,8 @@ export default function Dashboard() {
         onSubmit={submitSearch}
         placeholder="Search a card"
       />
+      
+      <SearchSuggestions suggestions={suggestions} onPick={pickSuggestion} />
 
       <View style={styles.navCards}>
         <Pressable

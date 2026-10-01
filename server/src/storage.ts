@@ -41,3 +41,5 @@ export async function deleteFallbacks(paths: string[]): Promise<void> {
     if (error) throw new Error(`Storage batch delete failed: ${error.message}`);
   }
 }
+
+export const MIRROR_PREFIX = 'tcgdex/';

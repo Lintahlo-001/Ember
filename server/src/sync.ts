@@ -1,5 +1,5 @@
 import { pool } from './db';
-import { deleteFallback } from './storage';
+import { deleteFallback, MIRROR_PREFIX } from './storage';
 import {
   ExcludedSeries,
   getCard,
@@ -212,6 +212,7 @@ async function reconcileFallback(
   const { rows } = await pool.query(`SELECT ${pathCol} AS path FROM ${table} WHERE id = $1`, [id]);
   const oldPath: string | null = rows[0]?.path ?? null;
   if (!oldPath) return;
+  if (oldPath.startsWith(MIRROR_PREFIX)) return;
 
   await pool.query(`UPDATE ${table} SET ${pathCol} = NULL, ${sourceCol} = NULL WHERE id = $1`, [id]);
   try {
@@ -222,7 +223,9 @@ async function reconcileFallback(
 }
 
 export async function recheckFallbackLogos(): Promise<{ checked: number; restored: number }> {
-  const { rows } = await pool.query(`SELECT id FROM catalog.sets WHERE logo_path IS NOT NULL`);
+  const { rows } = await pool.query(
+    `SELECT id FROM catalog.sets WHERE logo_path IS NOT NULL AND logo_path NOT LIKE 'tcgdex/%'`,
+  );
   let restored = 0;
   for (const row of rows) {
     const before = await pool.query(`SELECT logo_path FROM catalog.sets WHERE id = $1`, [row.id]);

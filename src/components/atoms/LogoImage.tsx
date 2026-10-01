@@ -5,7 +5,7 @@ import { View, type ViewStyle } from 'react-native';
 
 type Props = {
   uri: string | null;
-  label: string; 
+  label: string;
   style: ViewStyle;
   iconSize?: number;
 };
@@ -13,11 +13,12 @@ type Props = {
 export default function LogoImage({ uri, label, style, iconSize }: Props) {
   const [failedUri, setFailedUri] = useState<string | null>(null);
   const showPlaceholder = !uri || failedUri === uri;
+  const roomForLabel = typeof style.height === 'number' && style.height >= 48;
 
   return (
     <View style={style}>
       {showPlaceholder ? (
-        <LogoPlaceholder iconSize={iconSize} />
+        <LogoPlaceholder iconSize={iconSize} showLabel={roomForLabel} />
       ) : (
         <Image
           source={{ uri }}

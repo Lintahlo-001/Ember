@@ -31,7 +31,7 @@ function RootLayoutNav() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="modals/ownership-entry" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="modals/ownership-entry" options={{ presentation: 'transparentModal', animation: 'fade' }}/>
         <Stack.Screen name="modals/pricing-detail" options={{ presentation: 'modal' }} />
       </Stack>
     </>

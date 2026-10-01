@@ -1,3 +1,4 @@
+import BlurredBackdrop from '@/src/components/atoms/BlurredBackdrop';
 import Screen from '@/src/components/layout/Screen';
 import ScreenHeader from '@/src/components/molecules/ScreenHeader';
 import StatusView from '@/src/components/molecules/StatusView';
@@ -11,7 +12,7 @@ import { deleteEntry, fetchEntries, updateEntry, type OwnershipEntry } from '@/s
 import theme from '@/src/theme/theme';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 
 // Busiest screen in the app. Swipe navigation + wishlist heart: Group 5.
 // Price pill tap -> Pricing Detail modal: Group 9.
@@ -85,8 +86,12 @@ export default function CardDetail() {
     ]);
 
   return (
-    <Screen>
-      {!card ? <ScreenHeader title="" /> : null}
+    <Screen noPadding>
+      {!card ? (
+        <View style={styles.pad}>
+          <ScreenHeader title="" />
+        </View>
+      ) : null}
       <StatusView loading={loading} error={error} onRetry={() => setReloadKey((k) => k + 1)}>
         {card ? (
           <ScrollView
@@ -94,6 +99,8 @@ export default function CardDetail() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
+            <View style={styles.hero}>
+            <BlurredBackdrop uri={card.image_url} />
             <CardDetailHeader
               cardName={card.name}
               cardNumber={cardNumber(card.local_id, card.card_count_official)}
@@ -118,6 +125,7 @@ export default function CardDetail() {
                 router.push({ pathname: '/(tabs)/dashboard/search-results', params: { artist } })
               }
             />
+            </View>
             <YourCollectionSection
               entries={entries}
               onAdd={openAdd}
@@ -133,5 +141,12 @@ export default function CardDetail() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: theme.spacing.space2, paddingBottom: 140 },
+  content: { gap: theme.spacing.space2, paddingHorizontal: theme.spacing.space3, paddingBottom: 140 },
+  pad: { paddingHorizontal: theme.spacing.space3 },
+  hero: {
+    gap: theme.spacing.space2,
+    marginHorizontal: -theme.spacing.space3,
+    paddingHorizontal: theme.spacing.space3,
+    paddingBottom: theme.spacing.space2,
+  },
 });

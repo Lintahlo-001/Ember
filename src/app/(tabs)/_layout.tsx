@@ -1,8 +1,27 @@
 import NavBar from '@/src/components/organisms/NavBar';
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
+import { useEffect } from 'react';
+import { BackHandler } from 'react-native';
 
-// Tab Order: Wishlist (left) - Dashboard (middle) - Pokedex (right).
 export default function TabsLayout() {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (pathname !== '/dashboard') {
+      return;
+    }
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        BackHandler.exitApp();
+        return true;
+      }
+    );
+
+    return () => subscription.remove();
+  }, [pathname]);
+
   return (
     <Tabs
       screenOptions={{ headerShown: false }}
@@ -10,15 +29,26 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="wishlist"
-        options={{ title: 'Wishlist', tabBarAccessibilityLabel: 'Wishlist tab' }}
+        options={{
+          title: 'Wishlist',
+          tabBarAccessibilityLabel: 'Wishlist tab',
+        }}
       />
+
       <Tabs.Screen
         name="dashboard"
-        options={{ title: 'Home', tabBarAccessibilityLabel: 'Home tab' }}
+        options={{
+          title: 'Home',
+          tabBarAccessibilityLabel: 'Home tab',
+        }}
       />
+
       <Tabs.Screen
         name="pokedex"
-        options={{ title: 'Pokédex', tabBarAccessibilityLabel: 'Pokédex tab' }}
+        options={{
+          title: 'Pokédex',
+          tabBarAccessibilityLabel: 'Pokédex tab',
+        }}
       />
     </Tabs>
   );

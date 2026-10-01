@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   titleBlock: { flex: 1, gap: 2, paddingTop: 6 },
   title: { fontFamily: theme.fonts.header, fontSize: theme.fontSizes.base, color: theme.colors.text },
   setRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  symbol: { width: 20, height: 20 },
+  symbol: { width: 30, height: 30 },
   setName: { flex: 1, fontFamily: theme.fonts.body, fontSize: theme.fontSizes.sm, color: theme.colors.text },
-  badge: { maxWidth: '36%', paddingTop: 14 },
+  badge: { maxWidth: '35%', paddingTop: 14 },
 });

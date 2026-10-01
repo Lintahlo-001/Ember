@@ -6,9 +6,11 @@ import { pool } from './db';
 import { catalogRouter } from './routes/catalog';
 import { internalSyncRouter } from './routes/internalSync';
 import { ensureLoaded } from './suggest';
+
 dotenv.config();
 
 const app = express();
+
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
@@ -16,6 +18,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:8081')
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
+
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json({ limit: '10kb' }));
 
@@ -23,10 +26,18 @@ app.use(express.json({ limit: '10kb' }));
 app.get('/health', async (_req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
-    res.status(200).json({ status: 'ok', dbTime: result.rows[0].now });
+
+    return res.status(200).json({
+      status: 'ok',
+      dbTime: result.rows[0].now,
+    });
   } catch (err) {
     console.error('Database connection failed:', err);
-    res.status(500).json({ status: 'error', message: 'Database unreachable' });
+
+    return res.status(500).json({
+      status: 'error',
+      message: 'Database unreachable',
+    });
   }
 });
 
@@ -34,13 +45,26 @@ app.use(internalSyncRouter);
 app.use(requireAuth);
 app.use(catalogRouter);
 
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
+app.use(
+  (err: unknown, _req: Request, res: Response, next: NextFunction) => {
+    console.error('Unhandled error:', err);
+
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    return res.status(500).json({
+      error: 'Internal server error',
+    });
+  },
+);
 
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  ensureLoaded().catch((err) => console.error('Suggest warm-up failed:', err));
+
+  ensureLoaded().catch((err) => {
+    console.error('Suggest warm-up failed:', err);
+  });
 });

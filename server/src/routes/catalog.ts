@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db';
 import { publicUrl, rarityIconUrl } from '../storage';
+import { ensureLoaded, suggest } from '../suggest';
 import { syncCard, syncSet } from '../sync';
 import { isUsableTcgdexAsset, TcgdexNotFound } from '../tcgdex';
 
@@ -107,6 +108,8 @@ catalogRouter.get('/cards/suggest', async (req, res) => {
     res.json([]);
     return;
   }
+  await ensureLoaded();
+  res.json(suggest(q));
 
   const esc = q.replace(/[\\%_]/g, '\\$&');
   const { rows } = await pool.query(

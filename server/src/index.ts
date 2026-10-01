@@ -5,6 +5,7 @@ import { requireAuth } from './auth';
 import { pool } from './db';
 import { catalogRouter } from './routes/catalog';
 import { internalSyncRouter } from './routes/internalSync';
+import { ensureLoaded } from './suggest';
 dotenv.config();
 
 const app = express();
@@ -41,4 +42,5 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  ensureLoaded().catch((err) => console.error('Suggest warm-up failed:', err));
 });

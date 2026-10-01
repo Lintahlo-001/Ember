@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.space1 },
   back: { minHeight: theme.a11y.touchTargetMin, justifyContent: 'center' },
   titleBlock: { flex: 1, gap: 2, paddingTop: 6 },
-  title: { fontFamily: theme.fonts.header, fontSize: theme.fontSizes.xl, color: theme.colors.text },
+  title: { fontFamily: theme.fonts.header, fontSize: theme.fontSizes.base, color: theme.colors.text },
   setRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   symbol: { width: 20, height: 20 },
   setName: { flex: 1, fontFamily: theme.fonts.body, fontSize: theme.fontSizes.sm, color: theme.colors.text },

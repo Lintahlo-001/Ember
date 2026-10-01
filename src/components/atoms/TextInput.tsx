@@ -11,9 +11,11 @@ type Props = {
   secureTextEntry?: boolean;
   error?: boolean;
   leftIcon?: ComponentProps<typeof Icon>['name'];
-  keyboardType?: 'default' | 'email-address';
+  keyboardType?: 'default' | 'email-address' | 'number-pad';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   textContentType?: ComponentProps<typeof RNTextInput>['textContentType'];
+  multiline?: boolean;
+  maxLength?: number;
 };
 
 export default function TextInput({
@@ -26,12 +28,20 @@ export default function TextInput({
   keyboardType = 'default',
   autoCapitalize = 'none',
   textContentType,
+  multiline,
+  maxLength,
 }: Props) {
   const [isVisible, setIsVisible] = useState(false);
   const isPasswordField = !!secureTextEntry;
 
   return (
-    <View style={[styles.wrapper, error && styles.wrapperError]}>
+    <View
+      style={[
+        styles.wrapper,
+        multiline && styles.wrapperMultiline,
+        error && styles.wrapperError,
+      ]}
+    >
       {leftIcon ? <Icon name={leftIcon} size={18} color={theme.colors.text} /> : null}
       <RNTextInput
         value={value}
@@ -42,7 +52,9 @@ export default function TextInput({
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         textContentType={textContentType}
-        style={styles.input}
+        multiline={multiline}
+        maxLength={maxLength}
+        style={[styles.input, multiline && styles.inputMultiline]}
       />
       {isPasswordField ? (
         <Pressable
@@ -70,6 +82,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.space2,
     backgroundColor: theme.colors.surface,
   },
+  wrapperMultiline: { alignItems: 'flex-start' },
   wrapperError: { borderColor: '#C0392B' },
   input: {
     flex: 1,
@@ -78,4 +91,5 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     paddingVertical: theme.spacing.space1,
   },
+  inputMultiline: { minHeight: 88, textAlignVertical: 'top' },
 });

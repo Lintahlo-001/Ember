@@ -1,5 +1,6 @@
 import Icon from '@/src/components/atoms/Icon';
 import theme from '@/src/theme/theme';
+import { useRef } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 type Props = {
@@ -19,9 +20,18 @@ export default function SearchBar({
   accessibilityLabel,
   variant = 'outlined',
 }: Props) {
+  const inputRef = useRef<TextInput>(null);
+  const hasText = value.length > 0;
+
+  const clear = () => {
+    onChangeText('');
+    inputRef.current?.focus();
+  };
+
   return (
     <View style={[styles.wrapper, variant === 'filled' && styles.filled]}>
       <TextInput
+        ref={inputRef}
         value={value}
         onChangeText={onChangeText}
         onSubmitEditing={onSubmit}
@@ -33,15 +43,20 @@ export default function SearchBar({
         autoCorrect={false}
         style={styles.input}
       />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Search"
-        onPress={onSubmit}
-        disabled={!onSubmit}
-        hitSlop={8}
-      >
-        <Icon name="search" size={20} color={theme.colors.text} />
-      </Pressable>
+      {hasText ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Clear search"
+          onPress={clear}
+          hitSlop={12}
+        >
+          <Icon name="x" size={20} color={theme.colors.text} />
+        </Pressable>
+      ) : (
+        <View accessible={false} importantForAccessibility="no-hide-descendants">
+          <Icon name="search" size={20} color={theme.colors.text} />
+        </View>
+      )}
     </View>
   );
 }

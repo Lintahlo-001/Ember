@@ -4,6 +4,7 @@ import Pill from '@/src/components/molecules/Pill';
 import { formatPrice, pokemonArtworkUrl } from '@/src/lib/format';
 import theme from '@/src/theme/theme';
 import { Pressable, StyleSheet, View } from 'react-native';
+import HeartIcon from '../atoms/icons/HeartIcon';
 
 type Props = {
   dexIds: number[];
@@ -55,11 +56,11 @@ export default function PillActionRow({
         ) : null}
         <View style={styles.spacer} />
         <IconButton
-          icon="heart"
           label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           active={isWishlisted}
           onPress={onWishlistToggle}
           disabled={!onWishlistToggle}
+          renderIcon={(color, size) => <HeartIcon filled={!!isWishlisted} color={color} size={size} />}
         />
       </View>
       <View style={styles.row}>

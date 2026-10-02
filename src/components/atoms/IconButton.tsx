@@ -1,10 +1,11 @@
 import Icon from '@/src/components/atoms/Icon';
 import theme from '@/src/theme/theme';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 type Props = {
-  icon: ComponentProps<typeof Icon>['name'];
+  icon?: ComponentProps<typeof Icon>['name'];
+  renderIcon?: (color: string, size: number) => ReactNode;
   label: string;
   onPress?: () => void;
   active?: boolean;
@@ -12,8 +13,19 @@ type Props = {
   size?: number;
 };
 
-export default function IconButton({ icon, label, onPress, active, disabled, size = 40 }: Props) {
+export default function IconButton({
+  icon,
+  renderIcon,
+  label,
+  onPress,
+  active,
+  disabled,
+  size = 40,
+}: Props) {
   const slop = Math.max(0, (theme.a11y.touchTargetMin - size) / 2);
+  const iconColor = active ? theme.colors.surface : theme.colors.text;
+  const iconSize = Math.round(size * 0.5);
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -29,7 +41,11 @@ export default function IconButton({ icon, label, onPress, active, disabled, siz
         disabled && styles.disabled,
       ]}
     >
-      <Icon name={icon} size={Math.round(size * 0.5)} color={active ? theme.colors.surface : theme.colors.text} />
+      {renderIcon ? (
+        renderIcon(iconColor, iconSize)
+      ) : icon ? (
+        <Icon name={icon} size={iconSize} color={iconColor} />
+      ) : null}
     </Pressable>
   );
 }
@@ -42,6 +58,11 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.text,
     backgroundColor: theme.colors.surface,
   },
-  active: { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent },
-  disabled: { opacity: 0.5 },
+  active: {
+    backgroundColor: theme.colors.accent,
+    borderColor: theme.colors.accent,
+  },
+  disabled: {
+    opacity: 0.5,
+  },
 });

@@ -1,5 +1,6 @@
 import IconButton from '@/src/components/atoms/IconButton';
 import CardNumberBadge from '@/src/components/molecules/CardNumberBadge';
+import ConfirmDialog from '@/src/components/molecules/ConfirmDialog';
 import StatusView from '@/src/components/molecules/StatusView';
 import EntryModalForm from '@/src/components/organisms/EntryModalForm';
 import { api, type CardDetail } from '@/src/lib/api';
@@ -8,7 +9,7 @@ import { addEntry, deleteEntry, fetchEntry, updateEntry, type EntryValues } from
 import theme from '@/src/theme/theme';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -28,6 +29,7 @@ export default function OwnershipEntryModal() {
   const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     if (!CARD_ID_RE.test(cardId) || (mode === 'edit' && !UUID_RE.test(entryId))) {
@@ -38,7 +40,7 @@ export default function OwnershipEntryModal() {
     setLoadError(null);
     (async () => {
       try {
-        const c = await api.card(cardId); // also gives us the variant options
+        const c = await api.card(cardId);
         const entry = mode === 'edit' ? await fetchEntry(entryId) : null;
         if (cancelled) return;
         setCard(c);
@@ -62,37 +64,30 @@ export default function OwnershipEntryModal() {
     try {
       if (mode === 'add') await addEntry(cardId, values);
       else await updateEntry(entryId, values);
-      router.back(); // the screen underneath refetches on focus
+      router.back();
     } catch (err) {
       setSaveError((err as Error).message);
       setSaving(false);
     }
   };
 
-  const confirmDelete = () =>
-    Alert.alert('Delete this entry?', 'It will be removed from your collection.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          setSaving(true);
-          try {
-            await deleteEntry(entryId);
-            router.back();
-          } catch (err) {
-            setSaveError((err as Error).message);
-            setSaving(false);
-          }
-        },
-      },
-    ]);
+  const runDelete = async () => {
+    setSaving(true);
+    try {
+      await deleteEntry(entryId);
+      setConfirmingDelete(false);
+      router.back();
+    } catch (err) {
+      setConfirmingDelete(false);
+      setSaveError((err as Error).message);
+      setSaving(false);
+    }
+  };
 
   const loading = !initial && !loadError;
 
   return (
     <View style={styles.root}>
-      {/* Tap the dimmed area above the sheet to close. */}
       <Pressable
         style={styles.backdrop}
         onPress={() => router.back()}
@@ -132,12 +127,22 @@ export default function OwnershipEntryModal() {
                 submitting={saving}
                 error={saveError}
                 onSave={save}
-                onDelete={mode === 'edit' ? confirmDelete : undefined}
+                onDelete={mode === 'edit' ? () => setConfirmingDelete(true) : undefined}
               />
             ) : null}
           </StatusView>
         </Animated.View>
       </KeyboardAvoidingView>
+
+      <ConfirmDialog
+        visible={confirmingDelete}
+        title="Delete this entry?"
+        message="It will be removed from your collection."
+        confirmLabel="Delete"
+        loading={saving}
+        onConfirm={runDelete}
+        onCancel={() => setConfirmingDelete(false)}
+      />
     </View>
   );
 }

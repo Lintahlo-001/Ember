@@ -8,7 +8,7 @@
 // Safe to Ctrl-C and re-run: only rows with a NULL path are selected.
 import { pool } from '../db';
 import { MIRROR_PREFIX, uploadFallback } from '../storage';
-import { isUsableTcgdexAsset } from '../tcgdex';
+import { isUsableTcgdexAsset, tcgdexSymbolUrl } from '../tcgdex';
 import { assertKnownSets, parseSetFilter, setFilterSql } from './cliFilters';
 
 const args = process.argv.slice(2);
@@ -85,7 +85,8 @@ async function mirrorSets() {
   const jobs: { id: string; url: string; file: 'logo' | 'symbol' }[] = [];
   for (const r of rows) {
     if (!r.logo_path && isUsableTcgdexAsset(r.logo)) jobs.push({ id: r.id, url: r.logo, file: 'logo' });
-    if (!r.symbol_path && isUsableTcgdexAsset(r.symbol)) jobs.push({ id: r.id, url: r.symbol, file: 'symbol' });
+    const symbolUrl = tcgdexSymbolUrl(r.symbol);
+    if (!r.symbol_path && symbolUrl) jobs.push({ id: r.id, url: symbolUrl, file: 'symbol' });
   }
   console.log(`Sets: ${jobs.length} logo/symbol files to mirror`);
   if (dryRun) return;

@@ -44,6 +44,11 @@ export function isUsableTcgdexAsset(url: string | null | undefined): boolean {
   return typeof url === 'string' && url.length > 0 && !url.includes('/univ/');
 }
 
+export function tcgdexSymbolUrl(url: string | null | undefined): string | null {
+  if (typeof url !== 'string' || url.length === 0) return null;
+  return url.includes('/univ/') ? url.replace('/univ/', '/en/') : url;
+}
+
 export const EXCLUDED_SERIES = ['tcgp'] as const;
 
 export class ExcludedSeries extends TcgdexNotFound {}

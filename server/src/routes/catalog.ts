@@ -3,7 +3,7 @@ import { pool } from '../db';
 import { publicUrl, rarityIconUrl } from '../storage';
 import { ensureLoaded, suggest } from '../suggest';
 import { syncCard, syncSet } from '../sync';
-import { isUsableTcgdexAsset, TcgdexNotFound } from '../tcgdex';
+import { isUsableTcgdexAsset, TcgdexNotFound, tcgdexSymbolUrl } from '../tcgdex';
 
 export const catalogRouter = Router();
 
@@ -19,6 +19,9 @@ function resolveAsset(tcgdexUrl: string | null, storagePath: string | null): str
   if (tcgdexUrl && isUsableTcgdexAsset(tcgdexUrl)) return withExt(tcgdexUrl);
   return null;
 }
+
+const resolveSymbol = (symbol: string | null, storagePath: string | null) =>
+  resolveAsset(tcgdexSymbolUrl(symbol), storagePath);
 
 const cardImage = (c: { image_base: string | null; image_path: string | null }) =>
   resolveAsset(c.image_base ? `${c.image_base}/high.webp` : null, c.image_path);
@@ -57,7 +60,7 @@ catalogRouter.get('/sets', async (_req, res) => {
     rows.map((s) => ({
       ...s,
       logo_url: resolveAsset(s.logo, s.logo_path),
-      symbol_url: resolveAsset(s.symbol, s.symbol_path),
+      symbol_url: resolveSymbol(s.symbol, s.symbol_path),
     })),
   );
 });
@@ -94,7 +97,7 @@ catalogRouter.get('/sets/:setId', async (req, res) => {
   res.json({
     ...row,
     logo_url: resolveAsset(row.logo, row.logo_path),
-    symbol_url: resolveAsset(row.symbol, row.symbol_path),
+    symbol_url: resolveSymbol(row.symbol, row.symbol_path),
     cards: cards.rows.map(toListItem),
   });
 });
@@ -183,7 +186,7 @@ catalogRouter.get('/cards/:cardId', async (req, res) => {
     price_market: num(row.price_market),
     image_url: cardImage(row),
     set_name: s?.name ?? null,
-    set_symbol_url: s ? resolveAsset(s.symbol, s.symbol_path) : null,
+    set_symbol_url: s ? resolveSymbol(s.symbol, s.symbol_path) : null,
     card_count_official: s?.card_count_official ?? null,
     rarity_icon_url: iconPath ? rarityIconUrl(iconPath) : null,
     variant_options: variantOptions(row.variants),

@@ -3,10 +3,13 @@
 //   npm run mirror -- --dry-run
 //   npm run mirror -- --sets-only
 //   npm run mirror -- --cards-only --limit=2000 --card-size=low
+//   --set=swsh3,swsh4          only these sets
+//   --exclude-set=base1,base2  everything except these (wins if a set is in both)
 // Safe to Ctrl-C and re-run: only rows with a NULL path are selected.
 import { pool } from '../db';
 import { MIRROR_PREFIX, uploadFallback } from '../storage';
 import { isUsableTcgdexAsset } from '../tcgdex';
+import { assertKnownSets, parseSetFilter, setFilterSql } from './cliFilters';
 
 const args = process.argv.slice(2);
 const has = (n: string) => args.includes(`--${n}`);
@@ -17,6 +20,7 @@ const BATCH = 200;
 const cardSize = opt('card-size') === 'low' ? 'low' : 'high';
 const limit = Number(opt('limit') ?? Infinity);
 const dryRun = has('dry-run');
+const { only, skip } = parseSetFilter(args)
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -45,7 +49,10 @@ async function inChunks<T>(items: T[], worker: (item: T) => Promise<void>) {
 
 async function mirrorSets() {
   const { rows } = await pool.query(
-    `SELECT id, logo, symbol, logo_path, symbol_path FROM catalog.sets ORDER BY id`,
+    `SELECT id, logo, symbol, logo_path, symbol_path FROM catalog.sets
+    WHERE true ${setFilterSql('id')}
+    ORDER BY id`,
+    [only, skip],
   );
   let done = 0, failed = 0, missing = 0;
 
@@ -90,7 +97,9 @@ async function mirrorSets() {
 async function mirrorCards() {
   const { rows: c } = await pool.query(
     `SELECT count(*)::int AS n FROM catalog.cards
-     WHERE image_path IS NULL AND image_base IS NOT NULL AND image_base NOT LIKE '%/univ/%'`,
+    WHERE image_path IS NULL AND image_base IS NOT NULL AND image_base NOT LIKE '%/univ/%'
+    ${setFilterSql('set_id')}`,
+    [only, skip],
   );
   console.log(`Cards: ${c[0].n} images to mirror (${cardSize}.webp)`);
   if (dryRun) return;
@@ -100,10 +109,11 @@ async function mirrorCards() {
     const take = Math.min(BATCH, limit - done - failed - missing);
     const { rows } = await pool.query(
       `SELECT id, image_base FROM catalog.cards
-       WHERE image_path IS NULL AND image_base IS NOT NULL
-         AND image_base NOT LIKE '%/univ/%' AND id > $1
-       ORDER BY id LIMIT $2`,
-      [lastId, take],
+      WHERE image_path IS NULL AND image_base IS NOT NULL
+        AND image_base NOT LIKE '%/univ/%' AND id > $3
+        ${setFilterSql('set_id')}
+      ORDER BY id LIMIT $4`,
+      [only, skip, lastId, take],
     );
     if (rows.length === 0) break;
     lastId = rows[rows.length - 1].id;
@@ -130,6 +140,10 @@ async function mirrorCards() {
 }
 
 async function main() {
+  await assertKnownSets(only, skip);
+  if (only || skip) {
+    console.log(`Filter: only=${only?.join(',') ?? 'all'} exclude=${skip?.join(',') ?? 'none'}`);
+  }
   if (!has('cards-only')) await mirrorSets();
   if (!has('sets-only')) await mirrorCards();
 }

@@ -1,9 +1,11 @@
 import BlurredBackdrop from '@/src/components/atoms/BlurredBackdrop';
 import Screen from '@/src/components/layout/Screen';
+import ConfirmDialog from '@/src/components/molecules/ConfirmDialog';
 import ScreenHeader from '@/src/components/molecules/ScreenHeader';
 import StatusView from '@/src/components/molecules/StatusView';
 import CardDetailHeader from '@/src/components/organisms/CardDetailHeader';
 import CardImageWithPeeks from '@/src/components/organisms/CardImageWithPeeks';
+import CardLightbox from '@/src/components/organisms/CardLightbox';
 import PillActionRow from '@/src/components/organisms/PillActionRow';
 import YourCollectionSection from '@/src/components/organisms/YourCollectionSection';
 import { api, type CardDetail as CardDetailData } from '@/src/lib/api';
@@ -25,6 +27,9 @@ export default function CardDetail() {
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [entries, setEntries] = useState<OwnershipEntry[]>([]);
+  const [zoomed, setZoomed] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<OwnershipEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,22 +73,22 @@ export default function CardDetail() {
     }
   };
 
-  const requestDelete = (entry: OwnershipEntry) =>
-    Alert.alert('Delete this entry?', 'It will be removed from your collection.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteEntry(entry.id);
-            setEntries((list) => list.filter((e) => e.id !== entry.id));
-          } catch (err) {
-            Alert.alert('Could not delete entry', (err as Error).message);
-          }
-        },
-      },
-    ]);
+  const requestDelete = (entry: OwnershipEntry) => setPendingDelete(entry);
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await deleteEntry(pendingDelete.id);
+      setEntries((list) => list.filter((e) => e.id !== pendingDelete.id));
+      setPendingDelete(null);
+    } catch (err) {
+      setPendingDelete(null);
+      Alert.alert('Could not delete entry', (err as Error).message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <Screen noPadding>
@@ -109,7 +114,7 @@ export default function CardDetail() {
               rarity={card.rarity}
               rarityIconUri={card.rarity_icon_url}
             />
-            <CardImageWithPeeks imageUri={card.image_url} name={card.name} />
+            <CardImageWithPeeks imageUri={card.image_url} name={card.name} onPress={() => setZoomed(true)} />
             <PillActionRow
               dexIds={card.dex_ids ?? []}
               artistName={card.illustrator}
@@ -136,6 +141,19 @@ export default function CardDetail() {
           </ScrollView>
         ) : null}
       </StatusView>
+
+      {card ? (
+        <CardLightbox visible={zoomed} uri={card.image_url} name={card.name} onClose={() => setZoomed(false)} />
+      ) : null}
+      <ConfirmDialog
+        visible={!!pendingDelete}
+        title="Delete this entry?"
+        message="It will be removed from your collection."
+        confirmLabel="Delete"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </Screen>
   );
 }

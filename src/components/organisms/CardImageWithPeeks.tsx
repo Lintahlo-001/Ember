@@ -1,27 +1,34 @@
 import CardImage from '@/src/components/atoms/CardImage';
 import theme from '@/src/theme/theme';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 type Props = {
   imageUri: string | null;
   name: string;
   prevImageUri?: string | null;
   nextImageUri?: string | null;
+  onPress?: () => void;
 };
 
 const PEEK_WIDTH = 28;
 
 // Main image centered; dimmed neighbours peek in from each side. With no list
 // context (Group 5 adds it) both peeks are simply empty gutters.
-export default function CardImageWithPeeks({ imageUri, name, prevImageUri, nextImageUri }: Props) {
+export default function CardImageWithPeeks({ imageUri, name, prevImageUri, nextImageUri, onPress }: Props) {
   return (
     <View style={styles.row}>
       <View style={styles.peek} accessible={false} importantForAccessibility="no-hide-descendants">
         {prevImageUri ? <CardImage uri={prevImageUri} name="Previous card" style={styles.peekImage} /> : null}
       </View>
-      <View style={styles.main}>
+      <Pressable
+        style={styles.main}
+        onPress={onPress}
+        disabled={!onPress || !imageUri}
+        accessibilityRole="button"
+        accessibilityLabel={`View larger image of ${name}`}
+      >
         <CardImage uri={imageUri} name={name} />
-      </View>
+      </Pressable>
       <View style={styles.peek} accessible={false} importantForAccessibility="no-hide-descendants">
         {nextImageUri ? <CardImage uri={nextImageUri} name="Next card" style={styles.peekImage} /> : null}
       </View>

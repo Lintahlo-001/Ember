@@ -43,7 +43,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string): Promise<T> {
+async function request<T>(path: string, init?: { method?: 'GET' | 'POST'; body?: unknown }): Promise<T> {
   if (!BASE) throw new Error('EXPO_PUBLIC_API_URL is not set. Check your .env file.');
 
   const { data } = await supabase.auth.getSession();
@@ -54,7 +54,12 @@ async function request<T>(path: string): Promise<T> {
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(`${BASE}${path}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      method: init?.method ?? 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: init?.body ? JSON.stringify(init.body) : undefined,
       signal: controller.signal,
     });
     if (!res.ok) {
@@ -82,6 +87,13 @@ export const api = {
   },
   suggest: (q: string) =>
   request<Suggestion[]>(`/cards/suggest?q=${encodeURIComponent(q)}`),
+  cardsByIds: async (ids: string[]) => {
+    const out: CardListItem[] = [];
+    for (let i = 0; i < ids.length; i += 200) {
+      out.push(...(await request<CardListItem[]>('/cards/batch', { method: 'POST', body: { ids: ids.slice(i, i + 200) } })));
+    }
+    return out;
+  },
 };
 
 export type Suggestion = { label: string; kind: 'card' | 'artist' };

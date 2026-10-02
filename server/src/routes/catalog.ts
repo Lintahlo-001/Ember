@@ -149,6 +149,28 @@ catalogRouter.get('/cards/search', async (req, res) => {
   });
 });
 
+const BATCH_LIMIT = 200;
+
+catalogRouter.post('/cards/batch', async (req, res) => {
+  const raw: unknown = req.body?.ids;
+  if (
+    !Array.isArray(raw) ||
+    raw.length === 0 ||
+    raw.length > BATCH_LIMIT ||
+    !raw.every((i): i is string => typeof i === 'string' && ID_RE.test(i))
+  ) {
+    res.status(400).json({ error: `Provide 1-${BATCH_LIMIT} valid card ids` });
+    return;
+  }
+  const { rows } = await pool.query(
+    `SELECT id, set_id, local_id, name, image_base, image_path, rarity, illustrator,
+            price_market, price_currency
+     FROM catalog.cards WHERE id = ANY($1::text[])`,
+    [[...new Set(raw)]],
+  );
+  res.json(rows.map(toListItem));
+});
+
 catalogRouter.get('/cards/:cardId', async (req, res) => {
   const { cardId } = req.params;
   if (!ID_RE.test(cardId)) {

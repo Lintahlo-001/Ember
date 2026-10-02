@@ -29,7 +29,7 @@ export default function CardNumberBadge({ number, rarity, rarityIconUri }: Props
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.space1 },
-  icon: { width: 24, height: 24 },
+  icon: { width: 18, height: 18 },
   rarity: {
     flexShrink: 1,
     fontFamily: theme.fonts.body,

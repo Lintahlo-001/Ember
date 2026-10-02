@@ -49,15 +49,19 @@ export default function ConfirmDialog({
         />
         <View style={styles.card} accessibilityViewIsModal accessibilityRole="alert">
           <View style={styles.iconCircle} accessible={false} importantForAccessibility="no-hide-descendants">
-            <Icon name={icon} size={26} color={theme.colors.surface} />
+            <Icon name={icon} size={20} color={theme.colors.surface} />
           </View>
           <Text style={styles.title} accessibilityRole="header">
             {title}
           </Text>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.buttons}>
-            <Button label={confirmLabel} variant="cta" onPress={onConfirm} loading={loading} />
-            <Button label={cancelLabel} variant="outline" onPress={onCancel} disabled={loading} />
+            <View style={styles.buttonSlot}>
+              <Button label={cancelLabel} variant="outline" onPress={onCancel} disabled={loading} />
+            </View>
+            <View style={styles.buttonSlot}>
+              <Button label={confirmLabel} variant="cta" onPress={onConfirm} loading={loading} />
+            </View>
           </View>
         </View>
       </View>
@@ -75,22 +79,23 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    maxWidth: 360,
+    maxWidth: 320,
     alignItems: 'center',
-    gap: theme.spacing.space2,
-    padding: theme.spacing.space3,
+    gap: theme.spacing.space1,
+    padding: theme.spacing.space2,
     borderRadius: 12,
     backgroundColor: theme.colors.surface,
   },
   iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.accent,
   },
-  title: { fontFamily: theme.fonts.header, fontSize: theme.fontSizes.xl, color: theme.colors.text, textAlign: 'center' },
-  message: { fontFamily: theme.fonts.body, fontSize: theme.fontSizes.base, color: theme.colors.text, textAlign: 'center' },
-  buttons: { width: '100%', gap: theme.spacing.space1 },
+  title: { fontFamily: theme.fonts.header, fontSize: theme.fontSizes.base, color: theme.colors.text, textAlign: 'center' },
+  message: { fontFamily: theme.fonts.body, fontSize: theme.fontSizes.sm, color: theme.colors.text, textAlign: 'center' },
+  buttons: { width: '100%', flexDirection: 'row', gap: theme.spacing.space1, marginTop: theme.spacing.space1 },
+  buttonSlot: { flex: 1 },
 });

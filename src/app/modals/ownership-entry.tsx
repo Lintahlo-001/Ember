@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(32, 28, 28, 0.5)' },
   keyboard: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
-    height: '75%',
+    height: '70%',
     gap: theme.spacing.space2,
     paddingHorizontal: theme.spacing.space3,
     paddingTop: theme.spacing.space1,

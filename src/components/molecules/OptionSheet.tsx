@@ -4,12 +4,25 @@ import type { ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type SheetProps = { visible: boolean; title: string; onClose: () => void; children: ReactNode };
+type SheetProps = {
+  visible: boolean;
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+};
 
-export default function OptionSheet({ visible, title, onClose, children }: SheetProps) {
+export default function OptionSheet({ visible, title, onClose, children, footer }: SheetProps) {
   const insets = useSafeAreaInsets();
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
         <Pressable
           style={[styles.sheet, { paddingBottom: insets.bottom + theme.spacing.space2 }]}
@@ -18,7 +31,10 @@ export default function OptionSheet({ visible, title, onClose, children }: Sheet
           <Text style={styles.title} accessibilityRole="header">
             {title}
           </Text>
-          <ScrollView keyboardShouldPersistTaps="handled">{children}</ScrollView>
+          <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
+            {children}
+          </ScrollView>
+          {footer ? <View style={styles.footer}>{footer}</View> : null}
         </Pressable>
       </Pressable>
     </Modal>
@@ -33,20 +49,32 @@ export function OptionRow({
   label,
   selected,
   onPress,
+  multi,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
+  multi?: boolean;
 }) {
   return (
     <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
+      accessibilityRole={multi ? 'checkbox' : 'radio'}
+      accessibilityState={multi ? { checked: selected } : { selected }}
       onPress={onPress}
       style={styles.row}
     >
       <Text style={[styles.rowText, selected && styles.rowSelected]}>{label}</Text>
-      {selected ? <Icon name="check" size={18} color={theme.colors.accent} /> : <View style={styles.checkSpace} />}
+      {multi ? (
+        <Icon
+          name={selected ? 'check-square' : 'square'}
+          size={20}
+          color={selected ? theme.colors.accent : theme.colors.text}
+        />
+      ) : selected ? (
+        <Icon name="check" size={18} color={theme.colors.accent} />
+      ) : (
+        <View style={styles.checkSpace} />
+      )}
     </Pressable>
   );
 }
@@ -61,6 +89,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
     backgroundColor: theme.colors.bg,
   },
+  scroll: { flexShrink: 1 },
+  footer: { paddingTop: theme.spacing.space2 },
   title: {
     fontFamily: theme.fonts.header,
     fontSize: theme.fontSizes.xl,

@@ -30,7 +30,7 @@ export default function Dropdown({ label, value, options, onChange }: Props) {
         <Icon name="chevron-down" size={18} color={theme.colors.text} />
       </Pressable>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={() => setOpen(false)}>
         <Pressable
           style={styles.backdrop}
           onPress={() => setOpen(false)}

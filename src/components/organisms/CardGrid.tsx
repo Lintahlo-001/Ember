@@ -27,6 +27,10 @@ export default function CardGrid({ cards, owned, columns, onCardPress, onAddPres
       data={cards}
       numColumns={columns}
       keyExtractor={(c) => c.id}
+      initialNumToRender={6}
+      maxToRenderPerBatch={4}
+      windowSize={7}
+      removeClippedSubviews
       ListHeaderComponent={header}
       ListEmptyComponent={<Text style={styles.empty}>{emptyText}</Text>}
       columnWrapperStyle={columns > 1 ? { gap: GAP, marginBottom: GAP } : undefined}
@@ -35,12 +39,13 @@ export default function CardGrid({ cards, owned, columns, onCardPress, onAddPres
       showsVerticalScrollIndicator={false}
       renderItem={({ item }) => (
         <CardThumbnail
+          id={item.id}
           name={item.name}
           imageUri={item.image_url}
           ownedCount={owned.get(item.id) ?? 0}
           width={itemWidth}
-          onPress={() => onCardPress(item.id)}
-          onAddPress={() => onAddPress(item.id)}
+          onPress={onCardPress}
+          onAddPress={onAddPress}
         />
       )}
     />

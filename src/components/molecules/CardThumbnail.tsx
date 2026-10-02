@@ -2,26 +2,27 @@ import CardImage from '@/src/components/atoms/CardImage';
 import Icon from '@/src/components/atoms/Icon';
 import { DIM_UNOWNED_CARDS } from '@/src/lib/cardList';
 import theme from '@/src/theme/theme';
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 type Props = {
+  id: string;
   name: string;
   imageUri: string | null;
   ownedCount: number;
   width: number;
-  onPress: () => void;
-  onAddPress: () => void;
+  onPress: (id: string) => void;
+  onAddPress: (id: string) => void;
 };
 
-export default function CardThumbnail({ name, imageUri, ownedCount, width, onPress, onAddPress }: Props) {
+function CardThumbnail({ id, name, imageUri, ownedCount, width, onPress, onAddPress }: Props) {
   const owned = ownedCount > 0;
-
   return (
     <View style={{ width }}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={owned ? `${name}, owned ${ownedCount}` : `${name}, not owned`}
-        onPress={onPress}
+        onPress={() => onPress(id)}
       >
         <View style={DIM_UNOWNED_CARDS && !owned ? styles.dimmed : undefined}>
           <CardImage uri={imageUri} name={name} />
@@ -37,7 +38,7 @@ export default function CardThumbnail({ name, imageUri, ownedCount, width, onPre
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Add ${name} to collection`}
-          onPress={onAddPress}
+          onPress={() => onAddPress(id)}
           hitSlop={12}
           style={[styles.badge, styles.badgeAdd]}
         >
@@ -68,3 +69,5 @@ const styles = StyleSheet.create({
   badgeAdd: { backgroundColor: theme.colors.surface, borderColor: theme.colors.text },
   count: { fontFamily: theme.fonts.bodyMedium, fontSize: theme.fontSizes.sm, color: theme.colors.surface },
 });
+
+export default memo(CardThumbnail);

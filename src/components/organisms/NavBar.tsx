@@ -14,6 +14,12 @@ const TAB_WIDTH =90;
 const TAB_GAP = 15;
 const RADIUS = 12;
 
+const TAB_ORDER = ['wishlist', 'dashboard', 'pokedex'];
+const rank = (name: string) => {
+  const i = TAB_ORDER.indexOf(name);
+  return i === -1 ? TAB_ORDER.length : i;
+};
+
 const ICONS: Record<string, (color: string, size: number) => React.ReactNode> = {
   wishlist: (color, size) => <Feather name="heart" size={size} color={color} />,
   dashboard: (color, size) => <Feather name="home" size={size} color={color} />,
@@ -22,6 +28,9 @@ const ICONS: Record<string, (color: string, size: number) => React.ReactNode> = 
 
 export default function NavBar({ state, descriptors, navigation }: NavBarProps) {
   const insets = useSafeAreaInsets();
+  const ordered = state.routes
+  .map((route, index) => ({ route, index }))
+  .sort((a, b) => rank(a.route.name) - rank(b.route.name));
 
   return (
     <View
@@ -35,7 +44,7 @@ export default function NavBar({ state, descriptors, navigation }: NavBarProps) 
         <BlurView intensity={40} tint="light" style={styles.blur}>
           <View style={styles.tint} />
           <View style={styles.row}>
-            {state.routes.map((route, index) => {
+            {ordered.map(({ route, index }) => {
               const { options } = descriptors[route.key];
               const label = options.title ?? route.name;
               const isFocused = state.index === index;

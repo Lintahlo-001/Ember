@@ -6,11 +6,12 @@ import SearchSuggestions from '@/src/components/molecules/SearchSuggestions';
 import SetCard from '@/src/components/molecules/SetCard';
 import StatusView from '@/src/components/molecules/StatusView';
 import { useAuth } from '@/src/context/AuthContext';
+import { useScrollToTopOnTabPress } from '@/src/hooks/useScrollToTopOnTabPress';
 import { useSearchSuggestions } from '@/src/hooks/useSearchSuggestions';
 import { api, type SetBrief, type Suggestion } from '@/src/lib/api';
 import theme from '@/src/theme/theme';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 const GAP = theme.spacing.space1;
@@ -25,6 +26,8 @@ export default function Dashboard() {
   const [sets, setSets] = useState<SetBrief[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const listRef = useRef<FlatList<SetBrief>>(null);
+  useScrollToTopOnTabPress(listRef);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -128,7 +131,7 @@ export default function Dashboard() {
 
   return (
     <Screen>
-      <FlatList
+      <FlatList ref={listRef}
         data={visible}
         numColumns={2}
         keyExtractor={(s) => s.id}

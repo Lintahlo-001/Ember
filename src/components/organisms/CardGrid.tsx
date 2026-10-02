@@ -1,8 +1,8 @@
 import CardThumbnail from '@/src/components/molecules/CardThumbnail';
 import type { CardListItem } from '@/src/lib/api';
 import theme from '@/src/theme/theme';
-import type { ReactElement } from 'react';
-import { FlatList, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import type { ReactElement, Ref } from 'react';
+import { FlatList, type FlatList as FlatListType, StyleSheet, Text, useWindowDimensions } from 'react-native';
 
 type Props = {
   cards: CardListItem[];
@@ -12,17 +12,19 @@ type Props = {
   onAddPress: (cardId: string) => void;
   header?: ReactElement;
   emptyText: string;
+  listRef?: Ref<FlatListType<CardListItem>>;
 };
 
 const GAP = theme.spacing.space1;
 const BOTTOM_CLEARANCE = 120;
 
-export default function CardGrid({ cards, owned, columns, onCardPress, onAddPress, header, emptyText }: Props) {
+export default function CardGrid({ cards, owned, columns, onCardPress, onAddPress, header, emptyText, listRef }: Props) {
   const { width } = useWindowDimensions();
   const itemWidth = (width - theme.spacing.space3 * 2 - GAP * (columns - 1)) / columns;
 
   return (
     <FlatList
+      ref={listRef}
       key={columns}
       data={cards}
       numColumns={columns}

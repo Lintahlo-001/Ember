@@ -4,18 +4,21 @@ import StatusView from '@/src/components/molecules/StatusView';
 import CardGrid from '@/src/components/organisms/CardGrid';
 import { useCardListView } from '@/src/hooks/useCardListView';
 import { useOwnedTotals } from '@/src/hooks/useOwnedTotals';
+import { useScrollToTopOnTabPress } from '@/src/hooks/useScrollToTopOnTabPress';
 import { api, type CardListItem } from '@/src/lib/api';
 import { fetchWishlistIds } from '@/src/lib/wishlist';
 import theme from '@/src/theme/theme';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 export default function Wishlist() {
   const [cards, setCards] = useState<CardListItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const listRef = useRef<FlatList<CardListItem>>(null);
+  useScrollToTopOnTabPress(listRef);
 
   useFocusEffect(
     useCallback(() => {
@@ -73,7 +76,7 @@ export default function Wishlist() {
         ) : null}
       </View>
       <StatusView loading={!loaded && !error} error={error} onRetry={() => setReloadKey((k) => k + 1)}>
-        <CardGrid
+        <CardGrid listRef={listRef}
           cards={view.visible}
           owned={owned}
           columns={view.columns}

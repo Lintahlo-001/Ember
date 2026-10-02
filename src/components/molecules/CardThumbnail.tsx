@@ -3,7 +3,7 @@ import Icon from '@/src/components/atoms/Icon';
 import { DIM_UNOWNED_CARDS } from '@/src/lib/cardList';
 import theme from '@/src/theme/theme';
 import { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 type Props = {
   id: string;
@@ -17,6 +17,7 @@ type Props = {
 
 function CardThumbnail({ id, name, imageUri, ownedCount, width, onPress, onAddPress }: Props) {
   const owned = ownedCount > 0;
+
   return (
     <View style={{ width }}>
       <Pressable
@@ -29,25 +30,24 @@ function CardThumbnail({ id, name, imageUri, ownedCount, width, onPress, onAddPr
         </View>
       </Pressable>
 
-      {owned ? (
-        <View style={[styles.badge, styles.badgeOwned]} accessible={false} importantForAccessibility="no-hide-descendants">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={owned ? `Add another copy of ${name}` : `Add ${name} to collection`}
+        onPress={() => onAddPress(id)}
+        hitSlop={12}
+        style={[styles.badge, owned ? styles.badgeOwned : styles.badgeAdd]}
+      >
+        {owned ? (
           <Icon name="check" size={14} color={theme.colors.surface} />
-          {ownedCount > 1 ? <Text style={styles.count}>{ownedCount}</Text> : null}
-        </View>
-      ) : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Add ${name} to collection`}
-          onPress={() => onAddPress(id)}
-          hitSlop={12}
-          style={[styles.badge, styles.badgeAdd]}
-        >
+        ) : (
           <Icon name="plus" size={16} color={theme.colors.text} />
-        </Pressable>
-      )}
+        )}
+      </Pressable>
     </View>
   );
 }
+
+export default memo(CardThumbnail);
 
 const styles = StyleSheet.create({
   dimmed: { opacity: 0.45 },
@@ -69,5 +69,3 @@ const styles = StyleSheet.create({
   badgeAdd: { backgroundColor: theme.colors.surface, borderColor: theme.colors.text },
   count: { fontFamily: theme.fonts.bodyMedium, fontSize: theme.fontSizes.sm, color: theme.colors.surface },
 });
-
-export default memo(CardThumbnail);

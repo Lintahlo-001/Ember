@@ -2,7 +2,7 @@ import CardThumbnail from '@/src/components/molecules/CardThumbnail';
 import type { CardListItem } from '@/src/lib/api';
 import theme from '@/src/theme/theme';
 import type { ReactElement, Ref } from 'react';
-import { FlatList, type FlatList as FlatListType, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import { FlatList, StyleSheet, Text, useWindowDimensions } from 'react-native';
 
 type Props = {
   cards: CardListItem[];
@@ -12,7 +12,7 @@ type Props = {
   onAddPress: (cardId: string) => void;
   header?: ReactElement;
   emptyText: string;
-  listRef?: Ref<FlatListType<CardListItem>>;
+  listRef?: Ref<FlatList<CardListItem>>
 };
 
 const GAP = theme.spacing.space1;

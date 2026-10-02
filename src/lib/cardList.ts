@@ -1,16 +1,14 @@
 import type { CardListItem } from '@/src/lib/api';
 
-// TODO (Settings group): read this from a saved user preference.
-// Until then every card renders undimmed, owned or not.
 export const DIM_UNOWNED_CARDS = false;
+// TODO (Settings group): read this from a saved user preference. 
+// // Until then every card renders undimmed, owned or not.
 
 export type SortKey = 'number' | 'name' | 'price' | 'illustrator';
 export type SortDir = 'asc' | 'desc';
-export type CardFilter =
-  | { kind: 'all' }
-  | { kind: 'owned' }
-  | { kind: 'notOwned' }
-  | { kind: 'rarity'; rarity: string };
+export type OwnershipFilter = 'all' | 'owned' | 'notOwned';
+export type CardFilter = { ownership: OwnershipFilter; rarities: string[] };
+export const NO_FILTER: CardFilter = { ownership: 'all', rarities: [] };
 
 export const SORT_LABELS: Record<SortKey, string> = {
   number: 'Number',
@@ -18,22 +16,34 @@ export const SORT_LABELS: Record<SortKey, string> = {
   price: 'Price',
   illustrator: 'Illustrator',
 };
+export const OWNERSHIP_LABELS: Record<OwnershipFilter, string> = {
+  all: 'All',
+  owned: 'Owned',
+  notOwned: 'Not Owned',
+};
 
 export function filterLabel(f: CardFilter): string {
-  switch (f.kind) {
-    case 'owned':
-      return 'Owned';
-    case 'notOwned':
-      return 'Not Owned';
-    case 'rarity':
-      return f.rarity;
-    default:
-      return 'All';
-  }
+  const parts: string[] = [];
+  if (f.ownership !== 'all') parts.push(OWNERSHIP_LABELS[f.ownership]);
+  if (f.rarities.length === 1) parts.push(f.rarities[0]);
+  else if (f.rarities.length > 1) parts.push(`${f.rarities.length} rarities`);
+  return parts.length ? parts.join(' · ') : 'All';
 }
 
-const cmp = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const cmp = (a: string, b: string) => collator.compare(a, b);
 const tieBreak = (a: CardListItem, b: CardListItem) => cmp(a.name, b.name) || cmp(a.id, b.id);
+
+const RARITY_ORDER = [
+  'none', 'common', 'uncommon', 'rare', 'holo rare', 'rare holo',
+  'rare holo ex', 'rare holo gx', 'rare holo v', 'rare holo vmax', 'rare holo vstar',
+  'double rare', 'ultra rare', 'illustration rare', 'shiny rare', 'shiny ultra rare',
+  'ace spec rare', 'special illustration rare', 'secret rare', 'hyper rare', 'mega hyper rare',
+];
+const RANK = new Map(RARITY_ORDER.map((r, i) => [r, i]));
+const rarityRank = (r: string) => RANK.get(r.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+export const sortRarities = (list: string[]) =>
+  [...list].sort((a, b) => rarityRank(a) - rarityRank(b) || cmp(a, b));
 
 export function applyView(
   cards: CardListItem[],
@@ -42,10 +52,11 @@ export function applyView(
   dir: SortDir,
   filter: CardFilter,
 ): CardListItem[] {
+  const wanted = filter.rarities.length ? new Set(filter.rarities.map((r) => r.toLowerCase())) : null;
   const filtered = cards.filter((c) => {
-    if (filter.kind === 'owned') return owned.has(c.id);
-    if (filter.kind === 'notOwned') return !owned.has(c.id);
-    if (filter.kind === 'rarity') return c.rarity === filter.rarity;
+    if (filter.ownership === 'owned' && !owned.has(c.id)) return false;
+    if (filter.ownership === 'notOwned' && owned.has(c.id)) return false;
+    if (wanted && !(c.rarity && wanted.has(c.rarity.toLowerCase()))) return false;
     return true;
   });
   const sign = dir === 'asc' ? 1 : -1;

@@ -16,7 +16,8 @@
     "mirror": "ts-node-dev --transpile-only src/jobs/mirrorAssets.ts",
     "purge:mirror": "ts-node-dev --transpile-only src/jobs/purgeMirror.ts",
     "purge:empty": "ts-node-dev --transpile-only src/jobs/purgeEmptySets.ts",
-    "recheck:images": "ts-node-dev --transpile-only src/jobs/recheckImages.ts"
+    "recheck:images": "ts-node-dev --transpile-only src/jobs/recheckImages.ts",
+    "replace:image": "ts-node-dev --transpile-only src/jobs/replaceImage.ts"
   },
   "keywords": [],
   "author": "",

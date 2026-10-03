@@ -30,7 +30,7 @@ const cardImage = (c: { image_base: string | null; image_path: string | null; im
   versioned(resolveAsset(c.image_base ? `${c.image_base}/high.webp` : null, c.image_path), c.image_version);
 
 const LIST_COLS = `id, set_id, local_id, name, image_base, image_path, image_version,
-+                   rarity, illustrator, price_market, price_currency`;
+                   rarity, illustrator, price_market, price_currency`;
 
 const num = (v: unknown): number | null => (v == null ? null : Number(v));
 

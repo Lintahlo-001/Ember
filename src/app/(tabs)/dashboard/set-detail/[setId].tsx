@@ -1,4 +1,5 @@
 import IconButton from '@/src/components/atoms/IconButton';
+import StarIcon from '@/src/components/atoms/icons/StarIcon';
 import Screen from '@/src/components/layout/Screen';
 import ScreenHeader from '@/src/components/molecules/ScreenHeader';
 import SortFilterBar from '@/src/components/molecules/SortFilterBar';
@@ -9,10 +10,11 @@ import { useCardListView } from '@/src/hooks/useCardListView';
 import { useOwnedTotals } from '@/src/hooks/useOwnedTotals';
 import { api, type SetDetail as SetDetailData } from '@/src/lib/api';
 import { totalValue } from '@/src/lib/cardList';
+import { addFavoriteSet, isFavoriteSet, removeFavoriteSet } from '@/src/lib/favorites';
 import theme from '@/src/theme/theme';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 export default function SetDetail() {
   const { setId } = useLocalSearchParams<{ setId: string }>();
@@ -22,6 +24,36 @@ export default function SetDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [favorite, setFavorite] = useState(false);
+  const favBusy = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!id) return;
+      let cancelled = false;
+      isFavoriteSet(id)
+        .then((f) => !cancelled && setFavorite(f))
+        .catch((err) => console.warn('Could not load favorite state:', err));
+      return () => {
+        cancelled = true;
+      };
+    }, [id]),
+  );
+
+  const toggleFavorite = async () => {
+    if (favBusy.current) return;
+    favBusy.current = true;
+    const next = !favorite;
+    setFavorite(next);
+    try {
+      await (next ? addFavoriteSet(id) : removeFavoriteSet(id));
+    } catch (err) {
+      setFavorite(!next);
+      Alert.alert('Could not update favorites', (err as Error).message);
+    } finally {
+      favBusy.current = false;
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -66,8 +98,14 @@ export default function SetDetail() {
         rarities={view.rarities}
         columns={view.columns}
         onColumnsCycle={view.cycleColumns}
-        // Favorite star is wired up in Group 6.
-        trailing={<IconButton icon="star" label="Favorite set (coming soon)" disabled />}
+        trailing={
+          <IconButton
+            label={favorite ? 'Remove set from favorites' : 'Add set to favorites'}
+            active={favorite}
+            onPress={toggleFavorite}
+            renderIcon={(color, size) => <StarIcon filled={favorite} color={color} size={size} />}
+          />
+        }
       />
       <Text style={styles.listTitle} accessibilityRole="header">
         Card List

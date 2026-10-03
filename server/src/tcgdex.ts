@@ -50,8 +50,10 @@ export function tcgdexSymbolUrl(url: string | null | undefined): string | null {
 }
 
 export const EXCLUDED_SERIES = ['tcgp'] as const;
-
+  
 export class ExcludedSeries extends TcgdexNotFound {}
+
+export class EmptySet extends TcgdexNotFound {}
 
 export type TcgdexSerie = { id: string; name: string; sets?: TcgdexSetBrief[] };
 export const getSerie = (id: string) => get<TcgdexSerie>(`/series/${encodeURIComponent(id)}`);

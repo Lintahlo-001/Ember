@@ -1,6 +1,7 @@
 import { pool } from './db';
 import { deleteFallback, MIRROR_PREFIX } from './storage';
 import {
+  EmptySet,
   ExcludedSeries,
   getCard,
   getSet,
@@ -23,6 +24,7 @@ export async function syncSet(setId: string): Promise<void> {
   if (isExcludedSerie(set.serie?.id)) throw new ExcludedSeries(setId);
 
   const cards = (set.cards ?? []).filter((c) => str(c.id) && str(c.name));
+  if (cards.length === 0) throw new EmptySet(setId);
   const releaseDate = set.releaseDate && DATE_RE.test(set.releaseDate) ? set.releaseDate : null;
 
   const client = await pool.connect();
@@ -136,13 +138,14 @@ export async function syncAllSets(): Promise<{ discovered: number; updated: numb
   for (const s of remote) {
     if (excluded.has(s.id)) continue;
     const isNew = !known.has(s.id);
+    if (isNew && int(s.cardCount?.total) === 0) continue;
     const changed = !isNew && known.get(s.id) !== int(s.cardCount?.total);
     if (!isNew && !changed) continue;
     try {
       await syncSet(s.id);
       isNew ? discovered++ : updated++;
     } catch (err) {
-      if (err instanceof ExcludedSeries) continue;
+      if (err instanceof ExcludedSeries || err instanceof EmptySet) continue;
       console.error(`syncSet failed for ${s.id}:`, err);
     }
   }

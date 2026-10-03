@@ -37,7 +37,7 @@ export default function SetDetailHeader({
           <Text style={styles.small}>{formatReleaseDate(releaseDate)}</Text>
         </View>
         <View style={styles.valueBlock}>
-          <Text style={styles.small}>Total value</Text>
+          <Text style={styles.small}>Estimated value</Text>
           <Text style={styles.value}>{formatPrice(totalValue, currency)}</Text>
         </View>
       </View>
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
   },
   top: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.space1 },
-  logo: { width: 88, height: 64 },
+  logo: { width: 90, height: 66 },
   titleBlock: { flex: 1 },
   name: { fontFamily: theme.fonts.bodyMedium, fontSize: theme.fontSizes.base, color: theme.colors.text },
   valueBlock: { alignItems: 'flex-end' },

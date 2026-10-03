@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
 const url = process.env.SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const serviceKey = process.env.SUPABASE_SECRET_KEY;
 if (!url || !serviceKey) {
-  throw new Error('Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY — check server/.env');
+  throw new Error('Missing SUPABASE_URL / SUPABASE_SECRET_KEY — check server/.env');
 }
 
 const storageClient = createClient(url, serviceKey);

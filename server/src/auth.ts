@@ -5,9 +5,9 @@ let client: SupabaseClient | null = null;
 function getClient(): SupabaseClient {
   if (!client) {
     const url = process.env.SUPABASE_URL;
-    const anonKey = process.env.SUPABASE_ANON_KEY;
+    const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY;
     if (!url || !anonKey) {
-      throw new Error('Missing SUPABASE_URL / SUPABASE_ANON_KEY — check server/.env');
+      throw new Error('Missing SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY — check server/.env');
     }
     client = createClient(url, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },

@@ -63,7 +63,6 @@ export async function fetchEntry(entryId: string): Promise<OwnershipEntry> {
   return toEntry(data);
 }
 
-// Adds, or merges quantities if card+variant+condition already exists (see 004_ownership.sql).
 export async function addEntry(cardId: string, v: EntryValues): Promise<void> {
   const { error } = await supabase.rpc('add_ownership_entry', {
     p_card_id: cardId,
@@ -88,4 +87,20 @@ export async function updateEntry(
 export async function deleteEntry(entryId: string): Promise<void> {
   const { error } = await supabase.from('ownership_entries').delete().eq('id', entryId);
   if (error) throw toError(error);
+}
+
+export async function fetchAllOwned(): Promise<Map<string, number>> {
+  const totals = new Map<string, number>();
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('ownership_entries')
+      .select('card_id, quantity')
+      .order('id')
+      .range(from, from + PAGE - 1);
+    if (error) throw toError(error);
+    for (const r of data ?? []) totals.set(r.card_id, (totals.get(r.card_id) ?? 0) + r.quantity);
+    if (!data || data.length < PAGE) break;
+  }
+  return totals;
 }

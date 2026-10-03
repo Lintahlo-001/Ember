@@ -1,20 +1,24 @@
 import LogoImage from '@/src/components/atoms/LogoImage';
+import ProgressBar from '@/src/components/atoms/ProgressBar';
 import theme from '@/src/theme/theme';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 type Props = {
   name: string;
   logoUri: string | null;
   cardCount: number;
+  owned: number;
   onPress: () => void;
 };
 
-// Owned/total progress joins this in Group 6 (needs per-set ownership counts).
-export default function SetCard({ name, logoUri, cardCount, onPress }: Props) {
+export default function SetCard({ name, logoUri, cardCount, owned, onPress }: Props) {
+  const progress = cardCount > 0 ? Math.min(1, owned / cardCount) : 0;
+  const pct = Math.round(progress * 100);
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${name}, ${cardCount} cards`}
+      accessibilityLabel={`${name}, ${owned} of ${cardCount} owned, ${pct} percent complete`}
       onPress={onPress}
       style={styles.card}
     >
@@ -22,7 +26,13 @@ export default function SetCard({ name, logoUri, cardCount, onPress }: Props) {
       <Text style={styles.name} numberOfLines={2}>
         {name}
       </Text>
-      <Text style={styles.count}>{cardCount} cards</Text>
+      <ProgressBar value={progress} label={`${name} collection progress`} />
+      <View style={styles.stats}>
+        <Text style={styles.small}>
+          {owned}/{cardCount}
+        </Text>
+        <Text style={styles.small}>{pct}%</Text>
+      </View>
     </Pressable>
   );
 }
@@ -30,14 +40,15 @@ export default function SetCard({ name, logoUri, cardCount, onPress }: Props) {
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    gap: 4,
     padding: theme.spacing.space1,
     borderWidth: 1.5,
     borderColor: theme.colors.text,
     borderRadius: 12,
     backgroundColor: theme.colors.surface,
+    marginHorizontal: 0.5,
   },
   logo: { width: '100%', height: 56 },
   name: { fontFamily: theme.fonts.bodyMedium, fontSize: theme.fontSizes.sm, color: theme.colors.text },
-  count: { fontFamily: theme.fonts.body, fontSize: theme.fontSizes.sm, color: theme.colors.text },
+  stats: { flexDirection: 'row', justifyContent: 'space-between' },
+  small: { fontFamily: theme.fonts.body, fontSize: theme.fontSizes.sm, color: theme.colors.text },
 });

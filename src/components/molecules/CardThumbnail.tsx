@@ -12,10 +12,11 @@ type Props = {
   ownedCount: number;
   width: number;
   onPress: (id: string) => void;
-  onAddPress: (id: string) => void;
+  onAddPress?: (id: string) => void;
+  showBadge?: boolean;
 };
 
-function CardThumbnail({ id, name, imageUri, ownedCount, width, onPress, onAddPress }: Props) {
+function CardThumbnail({ id, name, imageUri, ownedCount, width, onPress, onAddPress, showBadge = true }: Props) {
   const owned = ownedCount > 0;
 
   return (
@@ -30,19 +31,21 @@ function CardThumbnail({ id, name, imageUri, ownedCount, width, onPress, onAddPr
         </View>
       </Pressable>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={owned ? `Add another copy of ${name}` : `Add ${name} to collection`}
-        onPress={() => onAddPress(id)}
-        hitSlop={12}
-        style={[styles.badge, owned ? styles.badgeOwned : styles.badgeAdd]}
-      >
-        {owned ? (
-          <Icon name="check" size={14} color={theme.colors.surface} />
-        ) : (
-          <Icon name="plus" size={16} color={theme.colors.text} />
-        )}
-      </Pressable>
+      {showBadge && onAddPress ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={owned ? `Add another copy of ${name}` : `Add ${name} to collection`}
+          onPress={() => onAddPress(id)}
+          hitSlop={12}
+          style={[styles.badge, owned ? styles.badgeOwned : styles.badgeAdd]}
+        >
+          {owned ? (
+            <Icon name="check" size={14} color={theme.colors.surface} />
+          ) : (
+            <Icon name="plus" size={16} color={theme.colors.text} />
+          )}
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -67,5 +70,4 @@ const styles = StyleSheet.create({
   },
   badgeOwned: { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent },
   badgeAdd: { backgroundColor: theme.colors.surface, borderColor: theme.colors.text },
-  count: { fontFamily: theme.fonts.bodyMedium, fontSize: theme.fontSizes.sm, color: theme.colors.surface },
 });

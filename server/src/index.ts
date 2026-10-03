@@ -20,7 +20,11 @@ const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:8081')
   .filter(Boolean);
 
 app.use(cors({ origin: allowedOrigins }));
-app.use(express.json({ limit: '10kb' }));
+
+const smallJson = express.json({ limit: '10kb' });
+app.use((req, res, next) =>
+  /^\/sets\/[^/]+\/changes$/.test(req.path) ? next() : smallJson(req, res, next),
+);
 
 // Public on purpose: Render's health check + confirms Postgres is reachable.
 app.get('/health', async (_req, res) => {

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { pool } from '../db';
 import { publicUrl, rarityIconUrl } from '../storage';
 import { ensureLoaded, suggest } from '../suggest';
@@ -23,8 +23,14 @@ function resolveAsset(tcgdexUrl: string | null, storagePath: string | null): str
 const resolveSymbol = (symbol: string | null, storagePath: string | null) =>
   resolveAsset(tcgdexSymbolUrl(symbol), storagePath);
 
-const cardImage = (c: { image_base: string | null; image_path: string | null }) =>
-  resolveAsset(c.image_base ? `${c.image_base}/high.webp` : null, c.image_path);
+const versioned = (url: string | null, v: string | null | undefined) =>
+  url && v ? `${url}?v=${v}` : url;
+
+const cardImage = (c: { image_base: string | null; image_path: string | null; image_version?: string | null }) =>
+  versioned(resolveAsset(c.image_base ? `${c.image_base}/high.webp` : null, c.image_path), c.image_version);
+
+const LIST_COLS = `id, set_id, local_id, name, image_base, image_path, image_version,
++                   rarity, illustrator, price_market, price_currency`;
 
 const num = (v: unknown): number | null => (v == null ? null : Number(v));
 
@@ -49,6 +55,7 @@ function toListItem(c: any) {
     price_market: num(c.price_market),
     price_currency: c.price_currency,
     image_url: cardImage(c),
+    image_version: c.image_version ?? null,
   };
 }
 
@@ -63,6 +70,71 @@ catalogRouter.get('/sets', async (_req, res) => {
       symbol_url: resolveSymbol(s.symbol, s.symbol_path),
     })),
   );
+});
+
+catalogRouter.get('/sets/status', async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT s.id, s.images_updated_at, s.synced_at, max(c.synced_at) AS cards_synced_at
+     FROM catalog.sets s LEFT JOIN catalog.cards c ON c.set_id = s.id
+     GROUP BY s.id`,
+  );
+  res.json(rows);
+});
+
+const VERSION_RE = /^[a-f0-9]{8}$/;
+const KNOWN_MAX = 2000;
+
+catalogRouter.post('/sets/:setId/changes', express.json({ limit: '100kb' }), async (req, res) => {
+  const { setId } = req.params;
+  if (!ID_RE.test(setId)) {
+    res.status(400).json({ error: 'Invalid set id' });
+    return;
+  }
+
+  const raw: unknown = req.body?.known;
+  const valid =
+    Array.isArray(raw) &&
+    raw.length <= KNOWN_MAX &&
+    raw.every(
+      (t) =>
+        Array.isArray(t) &&
+        t.length === 3 &&
+        typeof t[0] === 'string' && ID_RE.test(t[0]) &&
+        (t[1] === null || (typeof t[1] === 'string' && VERSION_RE.test(t[1]))) &&
+        (t[2] === null || (typeof t[2] === 'string' && !Number.isNaN(Date.parse(t[2])))),
+    );
+  if (!valid) {
+    res.status(400).json({ error: `known must be up to ${KNOWN_MAX} [id, version, syncedAt] triples` });
+    return;
+  }
+
+  const set = await pool.query('SELECT 1 FROM catalog.sets WHERE id = $1', [setId]);
+  if (!set.rowCount) {
+    res.status(404).json({ error: 'Set not found' });
+    return;
+  }
+
+  const client = new Map(
+    (raw as [string, string | null, string | null][]).map(([id, v, s]) => [
+      id,
+      { v, s: s ? Date.parse(s) : null },
+    ]),
+  );
+  const { rows } = await pool.query(
+    `SELECT ${LIST_COLS}, synced_at FROM catalog.cards WHERE set_id = $1`,
+    [setId],
+  );
+
+  const changed = rows.filter((r) => {
+    const k = client.get(r.id);
+    return !k || (r.image_version ?? null) !== k.v || r.synced_at.getTime() !== k.s;
+  });
+  const serverIds = new Set(rows.map((r) => r.id));
+
+  res.json({
+    changed: changed.map((r) => ({ ...toListItem(r), synced_at: r.synced_at })),
+    removed: [...client.keys()].filter((id) => !serverIds.has(id)),
+  });
 });
 
 catalogRouter.get('/sets/:setId', async (req, res) => {
@@ -86,8 +158,7 @@ catalogRouter.get('/sets/:setId', async (req, res) => {
     set = await pool.query('SELECT * FROM catalog.sets WHERE id = $1', [setId]);
   }
   const cards = await pool.query(
-    `SELECT id, set_id, local_id, name, image_base, image_path, rarity, illustrator,
-            price_market, price_currency
+    `SELECT ${LIST_COLS}
      FROM catalog.cards WHERE set_id = $1
      ORDER BY NULLIF(regexp_replace(local_id, '\\D', '', 'g'), '')::int NULLS LAST, local_id`,
     [setId],
@@ -133,8 +204,7 @@ catalogRouter.get('/cards/search', async (req, res) => {
   const pattern = q ? `%${q.replace(/[\\%_]/g, '\\$&')}%` : null;
 
   const { rows } = await pool.query(
-    `SELECT id, set_id, local_id, name, image_base, image_path, rarity, illustrator,
-            price_market, price_currency
+    `SELECT ${LIST_COLS}
      FROM catalog.cards
      WHERE ($1::text IS NULL OR name ILIKE $1 ESCAPE '\\' OR illustrator ILIKE $1 ESCAPE '\\')
        AND ($2::text IS NULL OR illustrator = $2)
@@ -163,8 +233,7 @@ catalogRouter.post('/cards/batch', async (req, res) => {
     return;
   }
   const { rows } = await pool.query(
-    `SELECT id, set_id, local_id, name, image_base, image_path, rarity, illustrator,
-            price_market, price_currency
+    `SELECT ${LIST_COLS}
      FROM catalog.cards WHERE id = ANY($1::text[])`,
     [[...new Set(raw)]],
   );

@@ -13,6 +13,7 @@ export type CardListItem = {
   price_market: number | null;
   price_currency: string | null;
   image_url: string | null;
+  image_version: string | null;
 };
 
 export type SetBrief = {

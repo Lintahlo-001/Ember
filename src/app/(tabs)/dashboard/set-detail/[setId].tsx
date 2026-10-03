@@ -8,8 +8,9 @@ import CardGrid from '@/src/components/organisms/CardGrid';
 import SetDetailHeader from '@/src/components/organisms/SetDetailHeader';
 import { useCardListView } from '@/src/hooks/useCardListView';
 import { useOwnedTotals } from '@/src/hooks/useOwnedTotals';
-import { api, type SetDetail as SetDetailData } from '@/src/lib/api';
+import { type SetDetail as SetDetailData } from '@/src/lib/api';
 import { totalValue } from '@/src/lib/cardList';
+import { catalog } from '@/src/lib/catalog';
 import { addFavoriteSet, isFavoriteSet, removeFavoriteSet } from '@/src/lib/favorites';
 import theme from '@/src/theme/theme';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -59,7 +60,7 @@ export default function SetDetail() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    api
+    catalog
       .set(id)
       .then((s) => !cancelled && setSet(s))
       .catch((e: Error) => !cancelled && setError(e.message))

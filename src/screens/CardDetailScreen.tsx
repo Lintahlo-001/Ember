@@ -8,7 +8,8 @@ import CardImageWithPeeks from '@/src/components/organisms/CardImageWithPeeks';
 import CardLightbox from '@/src/components/organisms/CardLightbox';
 import PillActionRow from '@/src/components/organisms/PillActionRow';
 import YourCollectionSection from '@/src/components/organisms/YourCollectionSection';
-import { api, type CardDetail as CardDetailData } from '@/src/lib/api';
+import { type CardDetail as CardDetailData } from '@/src/lib/api';
+import { catalog } from '@/src/lib/catalog';
 import { cardNumber } from '@/src/lib/format';
 import { deleteEntry, fetchEntries, updateEntry, type OwnershipEntry } from '@/src/lib/ownership';
 import { addToWishlist, isWishlisted, removeFromWishlist } from '@/src/lib/wishlist';
@@ -36,7 +37,7 @@ export default function CardDetailScreen() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    api
+    catalog
       .card(id)
       .then((c) => !cancelled && setCard(c))
       .catch((e: Error) => !cancelled && setError(e.message))

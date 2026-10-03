@@ -13,7 +13,8 @@ import { useCollapsed } from '@/src/hooks/useCollapsed';
 import { useFavoriteSets } from '@/src/hooks/useFavoriteSets';
 import { useScrollToTopOnTabPress } from '@/src/hooks/useScrollToTopOnTabPress';
 import { useSearchSuggestions } from '@/src/hooks/useSearchSuggestions';
-import { api, type SetBrief, type Suggestion } from '@/src/lib/api';
+import { type SetBrief, type Suggestion } from '@/src/lib/api';
+import { catalog } from '@/src/lib/catalog';
 import { groupWithFavorites, ownedPerSet, type SerieGroup } from '@/src/lib/series';
 import theme from '@/src/theme/theme';
 import { router, useFocusEffect } from 'expo-router';
@@ -41,7 +42,7 @@ export default function Dashboard() {
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    api
+    catalog
       .sets()
       .then(setSets)
       .catch((e: Error) => setError(e.message))

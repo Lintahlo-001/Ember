@@ -14,17 +14,21 @@ export type CardListItem = {
   price_currency: string | null;
   image_url: string | null;
   image_version: string | null;
+  synced_at?: string | null;
 };
 
 export type SetBrief = {
   id: string;
   name: string;
+  serie_id?: string | null;
   serie_name: string | null;
   release_date: string | null;
   card_count_total: number;
   card_count_official: number;
   logo_url: string | null;
   symbol_url: string | null;
+  images_updated_at?: string | null;
+  synced_at?: string | null;
 };
 
 export type SetDetail = SetBrief & { cards: CardListItem[] };

@@ -3,7 +3,8 @@ import CardNumberBadge from '@/src/components/molecules/CardNumberBadge';
 import ConfirmDialog from '@/src/components/molecules/ConfirmDialog';
 import StatusView from '@/src/components/molecules/StatusView';
 import EntryModalForm from '@/src/components/organisms/EntryModalForm';
-import { api, type CardDetail } from '@/src/lib/api';
+import { type CardDetail } from '@/src/lib/api';
+import { catalog } from '@/src/lib/catalog';
 import { cardNumber } from '@/src/lib/format';
 import { addEntry, deleteEntry, fetchEntry, updateEntry, type EntryValues } from '@/src/lib/ownership';
 import theme from '@/src/theme/theme';
@@ -40,7 +41,7 @@ export default function OwnershipEntryModal() {
     setLoadError(null);
     (async () => {
       try {
-        const c = await api.card(cardId);
+        const c = await catalog.card(cardId);
         const entry = mode === 'edit' ? await fetchEntry(entryId) : null;
         if (cancelled) return;
         setCard(c);

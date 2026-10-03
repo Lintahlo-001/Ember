@@ -10,8 +10,9 @@ import StatusView from '@/src/components/molecules/StatusView';
 import { useAllOwned } from '@/src/hooks/useAllOwned';
 import { useCardListView } from '@/src/hooks/useCardListView';
 import { useCollapsed } from '@/src/hooks/useCollapsed';
-import { api, type CardListItem, type SetBrief } from '@/src/lib/api';
+import { type CardListItem, type SetBrief } from '@/src/lib/api';
 import { totalValue } from '@/src/lib/cardList';
+import { catalog } from '@/src/lib/catalog';
 import { formatPrice } from '@/src/lib/format';
 import { groupBySerie } from '@/src/lib/series';
 import theme from '@/src/theme/theme';
@@ -41,7 +42,7 @@ export default function MyCards() {
 
   useEffect(() => {
     let cancelled = false;
-    api
+    catalog
       .sets()
       .then((s) => !cancelled && (setSets(s), setSetsLoaded(true)))
       .catch((e: Error) => !cancelled && setDataError(e.message));
@@ -59,7 +60,7 @@ export default function MyCards() {
       return;
     }
     let cancelled = false;
-    api
+    catalog
       .cardsByIds(idsKey.split(','))
       .then((list) => !cancelled && (setCards(list), setCardsLoaded(true)))
       .catch((e: Error) => !cancelled && setDataError(e.message));

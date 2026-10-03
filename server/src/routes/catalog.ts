@@ -30,7 +30,7 @@ const cardImage = (c: { image_base: string | null; image_path: string | null; im
   versioned(resolveAsset(c.image_base ? `${c.image_base}/high.webp` : null, c.image_path), c.image_version);
 
 const LIST_COLS = `id, set_id, local_id, name, image_base, image_path, image_version,
-                   rarity, illustrator, price_market, price_currency`;
+                   rarity, illustrator, price_market, price_currency, synced_at`;
 
 const num = (v: unknown): number | null => (v == null ? null : Number(v));
 
@@ -56,6 +56,7 @@ function toListItem(c: any) {
     price_currency: c.price_currency,
     image_url: cardImage(c),
     image_version: c.image_version ?? null,
+    synced_at: c.synced_at ?? null,
   };
 }
 
@@ -121,7 +122,7 @@ catalogRouter.post('/sets/:setId/changes', express.json({ limit: '100kb' }), asy
     ]),
   );
   const { rows } = await pool.query(
-    `SELECT ${LIST_COLS}, synced_at FROM catalog.cards WHERE set_id = $1`,
+    `SELECT ${LIST_COLS} FROM catalog.cards WHERE set_id = $1`,
     [setId],
   );
 
@@ -132,7 +133,7 @@ catalogRouter.post('/sets/:setId/changes', express.json({ limit: '100kb' }), asy
   const serverIds = new Set(rows.map((r) => r.id));
 
   res.json({
-    changed: changed.map((r) => ({ ...toListItem(r), synced_at: r.synced_at })),
+    changed: changed.map(toListItem),
     removed: [...client.keys()].filter((id) => !serverIds.has(id)),
   });
 });

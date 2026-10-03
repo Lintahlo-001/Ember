@@ -5,7 +5,8 @@ import CardGrid from '@/src/components/organisms/CardGrid';
 import { useCardListView } from '@/src/hooks/useCardListView';
 import { useOwnedTotals } from '@/src/hooks/useOwnedTotals';
 import { useScrollToTopOnTabPress } from '@/src/hooks/useScrollToTopOnTabPress';
-import { api, type CardListItem } from '@/src/lib/api';
+import { type CardListItem } from '@/src/lib/api';
+import { catalog } from '@/src/lib/catalog';
 import { fetchWishlistIds } from '@/src/lib/wishlist';
 import theme from '@/src/theme/theme';
 import { router, useFocusEffect } from 'expo-router';
@@ -27,7 +28,7 @@ export default function Wishlist() {
       (async () => {
         try {
           const ids = await fetchWishlistIds();
-          const list = ids.length ? await api.cardsByIds(ids) : [];
+          const list = ids.length ? await catalog.cardsByIds(ids) : [];
           if (!cancelled) {
             setCards(list);
             setLoaded(true);

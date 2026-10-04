@@ -1,4 +1,6 @@
 # Ember (WIP)
+![built with AI assistance](https://img.shields.io/badge/built%20with-AI%20assistance-blue)
+![Made with Claude](https://img.shields.io/badge/Made_with-Claude-D97757?logo=anthropic&logoColor=white)
 # Some placeholder texts below fr
 
 ## Overview
@@ -156,9 +158,9 @@ ember/
 
 ## AI use
  
-![built with AI assistance](https://img.shields.io/badge/built%20with-AI%20assistance-blue)
- 
-This project was built with AI assistance (Claude, Sonnet 5).
+![Made with Claude](https://img.shields.io/badge/Made_with-Claude-D97757?logo=anthropic&logoColor=white)
+
+This project was built with AI assistance (Claude, Sonnet 5.5).
 
 See the following for more details: [AI-USAGE.md](./AI-USAGE.md)
  

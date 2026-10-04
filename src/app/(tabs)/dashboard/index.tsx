@@ -11,6 +11,7 @@ import { useAuth } from '@/src/context/AuthContext';
 import { useAllOwned } from '@/src/hooks/useAllOwned';
 import { useCollapsed } from '@/src/hooks/useCollapsed';
 import { useFavoriteSets } from '@/src/hooks/useFavoriteSets';
+import { usePinnedImages } from '@/src/hooks/usePinnedImages';
 import { useScrollToTopOnTabPress } from '@/src/hooks/useScrollToTopOnTabPress';
 import { useSearchSuggestions } from '@/src/hooks/useSearchSuggestions';
 import { type SetBrief, type Suggestion } from '@/src/lib/api';
@@ -34,10 +35,11 @@ export default function Dashboard() {
   const listRef = useRef<FlatList<SerieGroup>>(null);
   useScrollToTopOnTabPress(listRef);
 
-  const { owned } = useAllOwned();
+  const { owned, loaded: ownedLoaded } = useAllOwned();
   const favorites = useFavoriteSets();
   const { isCollapsed, toggle } = useCollapsed('dashboard');
   const ownedBySet = useMemo(() => ownedPerSet(owned, sets), [owned, sets]);
+  usePinnedImages(owned, ownedLoaded && sets.length > 0);
 
   const load = useCallback(() => {
     setLoading(true);

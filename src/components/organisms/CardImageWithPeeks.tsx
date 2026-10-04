@@ -12,8 +12,6 @@ type Props = {
 
 const PEEK_WIDTH = 28;
 
-// Main image centered; dimmed neighbours peek in from each side. With no list
-// context (Group 5 adds it) both peeks are simply empty gutters.
 export default function CardImageWithPeeks({ imageUri, name, prevImageUri, nextImageUri, onPress }: Props) {
   return (
     <View style={styles.row}>
@@ -27,7 +25,7 @@ export default function CardImageWithPeeks({ imageUri, name, prevImageUri, nextI
         accessibilityRole="button"
         accessibilityLabel={`View larger image of ${name}`}
       >
-        <CardImage uri={imageUri} name={name} />
+      <CardImage uri={imageUri} name={name} cacheOnView />
       </Pressable>
       <View style={styles.peek} accessible={false} importantForAccessibility="no-hide-descendants">
         {nextImageUri ? <CardImage uri={nextImageUri} name="Next card" style={styles.peekImage} /> : null}

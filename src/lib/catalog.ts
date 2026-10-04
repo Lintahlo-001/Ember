@@ -246,4 +246,4 @@ async function card(id: string, onFresh?: (fresh: CardDetail) => void): Promise<
   return fresh;
 }
 
-export const catalog = { sets, set, cardsByIds, card, syncRarities };
+export const catalog = { sets, set, cardsByIds, card, syncRarities, ensureRarities };

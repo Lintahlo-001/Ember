@@ -1,13 +1,18 @@
 import { AuthProvider, useAuth } from '@/src/context/AuthContext';
+import { imageCache } from '@/src/lib/imageCache';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
+  const [cacheReady, setCacheReady] = useState(false);
+  useEffect(() => {
+  imageCache.init().catch((err) => console.warn('Image cache init failed:', err)).finally(() => setCacheReady(true));
+  }, []);
   const { loading: authLoading } = useAuth();
   const [fontsLoaded, fontError] = useFonts({
     'Anton-Regular': require('../../assets/fonts/Anton-Regular.ttf'),
@@ -16,12 +21,12 @@ function RootLayoutNav() {
   });
 
   useEffect(() => {
-    if ((fontsLoaded || fontError) && !authLoading) {
+    if ((fontsLoaded || fontError) && !authLoading && cacheReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError, authLoading]);
+  }, [fontsLoaded, fontError, authLoading, cacheReady]);
 
-  if ((!fontsLoaded && !fontError) || authLoading) {
+  if ((!fontsLoaded && !fontError) || authLoading || !cacheReady) {
     return null;
   }
 

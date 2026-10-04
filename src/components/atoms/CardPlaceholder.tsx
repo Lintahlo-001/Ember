@@ -1,8 +1,18 @@
 import Icon from '@/src/components/atoms/Icon';
 import theme from '@/src/theme/theme';
-import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
-export default function CardPlaceholder({ style }: { style?: ViewStyle }) {
+export default function CardPlaceholder({
+  style,
+}: {
+  style?: StyleProp<ViewStyle>;
+}) {
   return (
     <View
       style={[styles.box, style]}
@@ -35,5 +45,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
   },
   icon: { opacity: 0.45 },
-  text: { fontFamily: theme.fonts.bodyMedium, fontSize: theme.fontSizes.sm, color: theme.colors.text },
+  text: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSizes.sm,
+    color: theme.colors.text,
+  },
 });

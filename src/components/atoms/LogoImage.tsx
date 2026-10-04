@@ -1,6 +1,6 @@
 import LogoPlaceholder from '@/src/components/atoms/LogoPlaceholder';
+import { useCachedImage } from '@/src/hooks/useCachedImage';
 import { Image } from 'expo-image';
-import { useState } from 'react';
 import { View, type ViewStyle } from 'react-native';
 
 type Props = {
@@ -11,22 +11,21 @@ type Props = {
 };
 
 export default function LogoImage({ uri, label, style, iconSize }: Props) {
-  const [failedUri, setFailedUri] = useState<string | null>(null);
-  const showPlaceholder = !uri || failedUri === uri;
+  const img = useCachedImage(uri, 'misc');
   const roomForLabel = typeof style.height === 'number' && style.height >= 48;
 
   return (
     <View style={style}>
-      {showPlaceholder ? (
+      {!img.uri ? (
         <LogoPlaceholder iconSize={iconSize} showLabel={roomForLabel} />
       ) : (
         <Image
-          source={{ uri }}
+          source={{ uri: img.uri }}
           style={{ width: '100%', height: '100%' }}
           contentFit="contain"
           transition={150}
           accessibilityLabel={label}
-          onError={() => setFailedUri(uri)}
+          onError={img.onError}
         />
       )}
     </View>

@@ -103,6 +103,17 @@ const MIGRATIONS: string[] = [
     icon_downloaded_version TEXT
   );
   `,
+    `
+  CREATE TABLE image_files (
+    url       TEXT PRIMARY KEY NOT NULL,
+    kind      TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    bytes     INTEGER NOT NULL DEFAULT 0,
+    pinned    INTEGER NOT NULL DEFAULT 0,
+    last_used TEXT NOT NULL
+  );
+  CREATE INDEX image_files_lru_idx ON image_files(pinned, last_used);
+  `,
 ];
 
 async function open(): Promise<SQLite.SQLiteDatabase> {

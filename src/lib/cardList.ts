@@ -37,7 +37,7 @@ const tieBreak = (a: CardListItem, b: CardListItem) => cmp(a.name, b.name) || cm
 const RARITY_ORDER = [
   'none', 'common', 'uncommon', 'rare', 'holo rare', 'rare holo',
   'rare holo ex', 'rare holo gx', 'rare holo v', 'rare holo vmax', 'rare holo vstar',
-  'double rare', 'ultra rare', 'illustration rare', 'shiny rare', 'shiny ultra rare',
+  'double rare', 'ultra rare', 'mega attack rare', 'illustration rare', 'shiny rare', 'shiny ultra rare',
   'ace spec rare', 'special illustration rare', 'secret rare', 'hyper rare', 'mega hyper rare',
 ];
 const RANK = new Map(RARITY_ORDER.map((r, i) => [r, i]));

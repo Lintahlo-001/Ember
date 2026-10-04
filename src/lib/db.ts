@@ -94,6 +94,15 @@ const MIGRATIONS: string[] = [
   CREATE UNIQUE INDEX outbox_entity_uq
     ON outbox(user_id, kind, entity_key) WHERE kind IN ('wishlist','favorite');
   `,
+    `
+  CREATE TABLE rarities (
+    name                    TEXT PRIMARY KEY NOT NULL,
+    icon_url                TEXT NOT NULL,
+    icon_version            TEXT,
+    icon_local_path         TEXT,
+    icon_downloaded_version TEXT
+  );
+  `,
 ];
 
 async function open(): Promise<SQLite.SQLiteDatabase> {

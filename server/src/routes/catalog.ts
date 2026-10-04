@@ -241,6 +241,20 @@ catalogRouter.post('/cards/batch', async (req, res) => {
   res.json(rows.map(toListItem));
 });
 
+catalogRouter.get('/rarities', async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT name, icon_path, icon_version FROM catalog.rarities
+     WHERE icon_path IS NOT NULL ORDER BY name`,
+  );
+  res.json(
+    rows.map((r) => ({
+      name: r.name,
+      icon_url: versioned(rarityIconUrl(r.icon_path), r.icon_version),
+      icon_version: r.icon_version ?? null,
+    })),
+  );
+});
+
 catalogRouter.get('/cards/:cardId', async (req, res) => {
   const { cardId } = req.params;
   if (!ID_RE.test(cardId)) {
@@ -268,9 +282,10 @@ catalogRouter.get('/cards/:cardId', async (req, res) => {
     [row.set_id],
   );
   const rarity = row.rarity
-    ? await pool.query('SELECT icon_path FROM catalog.rarities WHERE name = $1', [row.rarity])
+    ? await pool.query('SELECT icon_path, icon_version FROM catalog.rarities WHERE name = $1', [row.rarity])
     : null;
   const iconPath: string | null = rarity?.rows[0]?.icon_path ?? null;
+  const iconVersion: string | null = rarity?.rows[0]?.icon_version ?? null;
   const s = set.rows[0];
 
   res.json({
@@ -280,7 +295,7 @@ catalogRouter.get('/cards/:cardId', async (req, res) => {
     set_name: s?.name ?? null,
     set_symbol_url: s ? resolveSymbol(s.symbol, s.symbol_path) : null,
     card_count_official: s?.card_count_official ?? null,
-    rarity_icon_url: iconPath ? rarityIconUrl(iconPath) : null,
+    rarity_icon_url: iconPath ? versioned(rarityIconUrl(iconPath), iconVersion) : null,
     variant_options: variantOptions(row.variants),
   });
 });

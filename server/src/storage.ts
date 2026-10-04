@@ -8,6 +8,7 @@ if (!url || !serviceKey) {
 
 const storageClient = createClient(url, serviceKey);
 const BUCKET = 'catalog-fallbacks';
+const RARITY_BUCKET = 'rarity-icons';
 
 export async function uploadFallback(
   path: string,
@@ -40,6 +41,18 @@ export async function deleteFallbacks(paths: string[]): Promise<void> {
     const { error } = await storageClient.storage.from(BUCKET).remove(paths.slice(i, i + BATCH));
     if (error) throw new Error(`Storage batch delete failed: ${error.message}`);
   }
+}
+
+export async function uploadRarityIcon(path: string, bytes: ArrayBuffer, contentType: string): Promise<void> {
+  const { error } = await storageClient.storage
+    .from(RARITY_BUCKET)
+    .upload(path, bytes, { contentType, upsert: true });
+  if (error) throw new Error(`Rarity icon upload failed for ${path}: ${error.message}`);
+}
+
+export async function deleteRarityIcon(path: string): Promise<void> {
+  const { error } = await storageClient.storage.from(RARITY_BUCKET).remove([path]);
+  if (error) throw new Error(`Rarity icon delete failed for ${path}: ${error.message}`);
 }
 
 export const MIRROR_PREFIX = 'tcgdex/';

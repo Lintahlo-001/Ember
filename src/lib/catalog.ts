@@ -1,13 +1,15 @@
 import {
-    api as remote,
-    type CardDetail,
-    type CardListItem,
-    type SetBrief,
-    type SetDetail,
+  api as remote,
+  type CardDetail,
+  type CardListItem,
+  type RarityIcon,
+  type SetBrief,
+  type SetDetail,
 } from '@/src/lib/api';
 import { getDb, getMeta, setMeta } from '@/src/lib/db';
 
 const SETS_CACHED_KEY = 'sets_cached_at';
+const RARITIES_CACHED_KEY = 'rarities_cached_at';
 
 const SET_COLS = `id, name, serie_id, serie_name, release_date, card_count_total,
                   card_count_official, logo_url, symbol_url, images_updated_at, synced_at`;
@@ -70,6 +72,42 @@ const cardParams = (c: CardListItem) => [
   c.price_currency, c.image_url, c.image_version ?? null, c.synced_at ?? null,
 ];
 
+async function saveRarities(list: RarityIcon[]): Promise<void> {
+  const db = await getDb();
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    for (const r of list) {
+      await tx.runAsync(
+        `INSERT INTO rarities (name, icon_url, icon_version) VALUES (?,?,?)
+         ON CONFLICT(name) DO UPDATE SET icon_url = excluded.icon_url, icon_version = excluded.icon_version`,
+        [r.name, r.icon_url, r.icon_version],
+      );
+    }
+    if (list.length === 0) await tx.runAsync('DELETE FROM rarities');
+    else
+      await tx.runAsync(
+        `DELETE FROM rarities WHERE name NOT IN (${placeholders(list.length)})`,
+        list.map((r) => r.name),
+      );
+  });
+  await setMeta(RARITIES_CACHED_KEY, new Date().toISOString());
+}
+
+async function syncRarities(): Promise<void> {
+  await saveRarities(await remote.rarities());
+}
+
+async function ensureRarities(): Promise<void> {
+  if (await getMeta(RARITIES_CACHED_KEY)) return;
+  await syncRarities().catch(() => {});
+}
+
+async function iconUrlFor(rarity: string | null): Promise<string | null> {
+  if (!rarity) return null;
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ icon_url: string }>('SELECT icon_url FROM rarities WHERE name = ?', [rarity]);
+  return row?.icon_url ?? null;
+}
+
 async function saveSets(sets: SetBrief[]): Promise<void> {
   const db = await getDb();
   await db.withExclusiveTransactionAsync(async (tx) => {
@@ -103,7 +141,6 @@ async function saveCardDetail(c: CardDetail): Promise<void> {
     set_name: c.set_name,
     set_symbol_url: c.set_symbol_url,
     card_count_official: c.card_count_official,
-    rarity_icon_url: c.rarity_icon_url,
   });
   await db.withExclusiveTransactionAsync(async (tx) => {
     await tx.runAsync(UPSERT_CARD, cardParams(c));
@@ -172,11 +209,11 @@ async function cardsByIds(ids: string[]): Promise<CardListItem[]> {
 type CardRow = CardListItem & { detail: string | null };
 const inflight = new Set<string>();
 
-function toDetail(row: CardRow): CardDetail | null {
+function toDetail(row: CardRow, rarityIconUrl: string | null): CardDetail | null {
   if (!row.detail) return null;
   try {
     const { detail, ...list } = row;
-    return { ...list, ...JSON.parse(detail) } as CardDetail;
+    return { ...list, ...JSON.parse(detail), rarity_icon_url: rarityIconUrl } as CardDetail;
   } catch {
     return null;
   }
@@ -185,7 +222,8 @@ function toDetail(row: CardRow): CardDetail | null {
 async function card(id: string, onFresh?: (fresh: CardDetail) => void): Promise<CardDetail> {
   const db = await getDb();
   const row = await db.getFirstAsync<CardRow>(`SELECT ${CARD_COLS}, detail FROM cards WHERE id = ?`, [id]);
-  const cached = row ? toDetail(row) : null;
+  if (row) await ensureRarities();
+  const cached = row ? toDetail(row, await iconUrlFor(row.rarity)) : null;
 
   if (cached) {
     if (onFresh && !inflight.has(id)) {
@@ -194,6 +232,7 @@ async function card(id: string, onFresh?: (fresh: CardDetail) => void): Promise<
         .card(id)
         .then(async (fresh) => {
           await saveCardDetail(fresh);
+          await ensureRarities();
           onFresh(fresh);
         })
         .catch(() => {})
@@ -207,4 +246,4 @@ async function card(id: string, onFresh?: (fresh: CardDetail) => void): Promise<
   return fresh;
 }
 
-export const catalog = { sets, set, cardsByIds, card };
+export const catalog = { sets, set, cardsByIds, card, syncRarities };

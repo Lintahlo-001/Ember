@@ -80,7 +80,10 @@ async function request<T>(path: string, init?: { method?: 'GET' | 'POST'; body?:
   }
 }
 
+export type RarityIcon = { name: string; icon_url: string; icon_version: string | null };
+
 export const api = {
+  rarities: () => request<RarityIcon[]>('/rarities'),
   sets: () => request<SetBrief[]>('/sets'),
   set: (id: string) => request<SetDetail>(`/sets/${encodeURIComponent(id)}`),
   card: (id: string) => request<CardDetail>(`/cards/${encodeURIComponent(id)}`),

@@ -16,7 +16,7 @@ export function usePinnedImages(owned: Map<string, number>, ready: boolean) {
         await catalog.ensureRarities();
         if (ids.length > 0) await catalog.cardsByIds(ids).catch(() => {});
         const r = await imageCache.syncPinned(ids);
-        if (r.downloaded || r.failed) console.log('Image cache:', r);
+        if (r.downloaded || r.failed) console.log('Image cache:', JSON.stringify(r, null, 2));
       } catch (err) {
         console.warn('Image pinning skipped:', (err as Error).message);
       }

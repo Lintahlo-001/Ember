@@ -213,7 +213,12 @@ async function evictIfNeeded(): Promise<void> {
 
 /* ---------- pinned set: owned + wishlisted cards, every set logo/symbol, rarity icons ---------- */
 
-type SyncResult = { wanted: number; downloaded: number; failed: number };
+type SyncResult = {
+  wanted: number;
+  downloaded: number;
+  failed: number;
+  reasons: Record<string, { count: number; sample: string }>;
+};
 
 async function runSync(cardIds: string[]): Promise<SyncResult> {
   await init();
@@ -251,13 +256,24 @@ async function runSync(cardIds: string[]): Promise<SyncResult> {
   for (const s of stale) await removeEntry(s.url, s.file_name);
 
   let downloaded = 0, failed = 0;
+  const reasons: SyncResult['reasons'] = {};
   await Promise.all(
     urls
       .filter((u) => !index.has(u))
-      .map((u) => ensure(u, wanted.get(u)!, true).then(() => void downloaded++, () => void failed++)),
+      .map((u) =>
+        ensure(u, wanted.get(u)!, true).then(
+          () => void downloaded++,
+          (err) => {
+            failed++;
+            const msg = (err as Error).message || 'unknown';
+            const r = (reasons[msg] ??= { count: 0, sample: u });
+            r.count++;
+          },
+        ),
+      ),
   );
   await evictIfNeeded();
-  return { wanted: urls.length, downloaded, failed };
+  return { wanted: urls.length, downloaded, failed, reasons };
 }
 
 let chain: Promise<unknown> = Promise.resolve();

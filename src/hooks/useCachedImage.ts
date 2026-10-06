@@ -6,13 +6,14 @@ export function useCachedImage(url: string | null, kind: ImageKind, cacheOnView 
   const [remoteFailed, setRemoteFailed] = useState<string | null>(null);
 
   const local = useMemo(() => (url ? imageCache.localUri(url) : null), [url]);
+  const missing = useMemo(() => !!url && imageCache.isMissing(url), [url]);
 
   useEffect(() => {
     if (url && !local && cacheOnView) imageCache.cacheOnView(url, kind);
   }, [url, local, kind, cacheOnView]);
 
   const useLocal = !!local && localFailed !== url;
-  const uri = !url || remoteFailed === url ? null : useLocal ? local : url;
+  const uri = !url || missing || remoteFailed === url ? null : useLocal ? local : url;
 
   const onError = () => {
     if (!url) return;

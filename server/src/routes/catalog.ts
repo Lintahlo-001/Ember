@@ -241,6 +241,60 @@ catalogRouter.post('/cards/batch', async (req, res) => {
   res.json(rows.map(toListItem));
 });
 
+const DETAIL_BATCH_LIMIT = 50;
+
+async function toDetails(rows: any[]) {
+  const setIds = [...new Set(rows.map((r) => r.set_id))];
+  const rarityNames = [...new Set(rows.map((r) => r.rarity).filter(Boolean))];
+  const [sets, rarities] = await Promise.all([
+    pool.query(
+      `SELECT id, name, symbol, symbol_path, symbol_version, card_count_official
+       FROM catalog.sets WHERE id = ANY($1::text[])`,
+      [setIds],
+    ),
+    pool.query(
+      'SELECT name, icon_path, icon_version FROM catalog.rarities WHERE name = ANY($1::text[])',
+      [rarityNames],
+    ),
+  ]);
+  const setById = new Map<string, any>(sets.rows.map((s) => [s.id, s]));
+  const rarityByName = new Map<string, any>(rarities.rows.map((r) => [r.name, r]));
+
+  return rows.map((row) => {
+    const s = setById.get(row.set_id);
+    const r = rarityByName.get(row.rarity);
+    return {
+      ...toListItem(row),
+      dex_ids: row.dex_ids ?? [],
+      set_name: s?.name ?? null,
+      set_symbol_url: s ? versioned(resolveSymbol(s.symbol, s.symbol_path), s.symbol_version) : null,
+      card_count_official: s?.card_count_official ?? null,
+      rarity_icon_url: r?.icon_path ? versioned(rarityIconUrl(r.icon_path), r.icon_version) : null,
+      variant_options: variantOptions(row.variants),
+    };
+  });
+}
+
+catalogRouter.post('/cards/details', async (req, res) => {
+  const raw: unknown = req.body?.ids;
+  if (
+    !Array.isArray(raw) ||
+    raw.length === 0 ||
+    raw.length > DETAIL_BATCH_LIMIT ||
+    !raw.every((i): i is string => typeof i === 'string' && ID_RE.test(i))
+  ) {
+    res.status(400).json({ error: `Provide 1-${DETAIL_BATCH_LIMIT} valid card ids` });
+    return;
+  }
+  const { rows } = await pool.query(
+    `SELECT ${LIST_COLS}, dex_ids, variants
+     FROM catalog.cards
+     WHERE id = ANY($1::text[]) AND detail_synced_at IS NOT NULL`,
+    [[...new Set(raw)]],
+  );
+  res.json(rows.length ? await toDetails(rows) : []);
+});
+
 catalogRouter.get('/rarities', async (_req, res) => {
   const { rows } = await pool.query(
     `SELECT name, icon_path, icon_version FROM catalog.rarities

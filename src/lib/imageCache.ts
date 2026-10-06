@@ -9,6 +9,7 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const MAX_CONCURRENT = 4;
 const EVICT_EVERY = 20;
 const SWEEP_META = 'image_orphan_sweep_at';
+const MISS_TTL_MS = 7 * 86_400_000;
 
 const dir = new Directory(Paths.document, 'images');
 
@@ -16,6 +17,7 @@ type Entry = { uri: string; kind: ImageKind; fileName: string };
 const index = new Map<string, Entry>();
 const touched = new Set<string>();
 const inflight = new Map<string, Promise<void>>();
+const missed = new Set<string>();
 let baseUri = '';
 let initPromise: Promise<void> | null = null;
 let unpinnedDownloads = 0;
@@ -70,6 +72,11 @@ async function load(): Promise<void> {
     'SELECT url, kind, file_name FROM image_files',
   );
   for (const r of rows) index.set(r.url, { uri: baseUri + r.file_name, kind: r.kind, fileName: r.file_name });
+  
+  await db.runAsync('DELETE FROM image_misses WHERE checked_at < ?', [
+    new Date(Date.now() - MISS_TTL_MS).toISOString(),
+  ]);
+  for (const m of await db.getAllAsync<{ url: string }>('SELECT url FROM image_misses')) missed.add(m.url);
 
   AppState.addEventListener('change', (s) => {
     if (s !== 'active') flushTouches().catch(() => {});
@@ -135,6 +142,18 @@ async function removeEntry(url: string, fileName: string): Promise<void> {
   } catch {}
 }
 
+async function recordMiss(url: string): Promise<void> {
+  missed.add(url);
+  const db = await getDb();
+  await db.runAsync(
+    `INSERT INTO image_misses (url, status, checked_at) VALUES (?, 404, ?)
+     ON CONFLICT(url) DO UPDATE SET checked_at = excluded.checked_at`,
+    [url, new Date().toISOString()],
+  );
+}
+
+const isMissing = (url: string) => missed.has(url);
+
 async function download(url: string, kind: ImageKind, pin: boolean): Promise<void> {
   ensureDir();
   const fileName = fileNameFor(url, kind);
@@ -142,6 +161,10 @@ async function download(url: string, kind: ImageKind, pin: boolean): Promise<voi
   const timer = setTimeout(() => controller.abort(), 20_000);
   try {
     const res = await fetch(url, { signal: controller.signal });
+    if (res.status === 404) {
+      await recordMiss(url);
+      throw new Error('HTTP 404');
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     if (!(res.headers.get('content-type') ?? '').startsWith('image/')) throw new Error('Not an image');
     const bytes = new Uint8Array(await res.arrayBuffer());
@@ -173,6 +196,7 @@ async function download(url: string, kind: ImageKind, pin: boolean): Promise<voi
 function ensure(url: string, kind: ImageKind, pin = false): Promise<void> {
   if (!url.startsWith('https://')) return Promise.reject(new Error('Only https images are cached'));
   if (index.has(url)) return Promise.resolve();
+  if (missed.has(url)) return Promise.reject(new Error('HTTP 404 (known missing)'));
   const running = inflight.get(url);
   if (running) return running;
   const p = slot(() => download(url, kind, pin)).finally(() => inflight.delete(url));
@@ -217,6 +241,7 @@ type SyncResult = {
   wanted: number;
   downloaded: number;
   failed: number;
+  skipped: number;
   reasons: Record<string, { count: number; sample: string }>;
 };
 
@@ -257,23 +282,22 @@ async function runSync(cardIds: string[]): Promise<SyncResult> {
 
   let downloaded = 0, failed = 0;
   const reasons: SyncResult['reasons'] = {};
+  const todo = urls.filter((u) => !index.has(u) && !missed.has(u));
+  const skipped = urls.filter((u) => !index.has(u) && missed.has(u)).length;
   await Promise.all(
-    urls
-      .filter((u) => !index.has(u))
-      .map((u) =>
-        ensure(u, wanted.get(u)!, true).then(
-          () => void downloaded++,
-          (err) => {
-            failed++;
-            const msg = (err as Error).message || 'unknown';
-            const r = (reasons[msg] ??= { count: 0, sample: u });
-            r.count++;
-          },
-        ),
+    todo.map((u) =>
+      ensure(u, wanted.get(u)!, true).then(
+        () => void downloaded++,
+        (err) => {
+          failed++;
+          const r = (reasons[(err as Error).message || 'unknown'] ??= { count: 0, sample: u });
+          r.count++;
+        },
       ),
+    ),
   );
   await evictIfNeeded();
-  return { wanted: urls.length, downloaded, failed, reasons };
+  return { wanted: urls.length, downloaded, failed, skipped, reasons };
 }
 
 let chain: Promise<unknown> = Promise.resolve();
@@ -298,8 +322,10 @@ async function clear(): Promise<void> {
   await init();
   index.clear();
   touched.clear();
+  missed.clear();
   const db = await getDb();
   await db.runAsync('DELETE FROM image_files');
+  await db.runAsync('DELETE FROM image_misses');
   try {
     for (const e of dir.list()) {
       try { e.delete(); } catch {}
@@ -307,4 +333,4 @@ async function clear(): Promise<void> {
   } catch {}
 }
 
-export const imageCache = { init, localUri, cacheOnView, ensure, invalidate, syncPinned, stats, clear };
+export const imageCache = { init, localUri, isMissing, cacheOnView, ensure, invalidate, syncPinned, stats, clear };

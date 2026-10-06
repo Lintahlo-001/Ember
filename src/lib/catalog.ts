@@ -133,24 +133,30 @@ async function saveSet(set: SetDetail): Promise<void> {
   });
 }
 
-async function saveCardDetail(c: CardDetail): Promise<void> {
-  const db = await getDb();
-  const detail = JSON.stringify({
+const detailJson = (c: CardDetail) =>
+  JSON.stringify({
     dex_ids: c.dex_ids ?? [],
     variant_options: c.variant_options,
     set_name: c.set_name,
     set_symbol_url: c.set_symbol_url,
     card_count_official: c.card_count_official,
   });
+
+async function saveCardDetails(list: CardDetail[]): Promise<void> {
+  if (list.length === 0) return;
+  const db = await getDb();
+  const now = new Date().toISOString();
   await db.withExclusiveTransactionAsync(async (tx) => {
-    await tx.runAsync(UPSERT_CARD, cardParams(c));
-    await tx.runAsync('UPDATE cards SET detail = ?, detail_synced_at = ? WHERE id = ?', [
-      detail,
-      new Date().toISOString(),
-      c.id,
-    ]);
+    for (const c of list) {
+      await tx.runAsync(UPSERT_CARD, cardParams(c));
+      await tx.runAsync('UPDATE cards SET detail = ?, detail_synced_at = ? WHERE id = ?', [detailJson(c), now, c.id]);
+      if (c.set_symbol_url) {
+        await tx.runAsync('UPDATE sets SET symbol_url = ? WHERE id = ?', [c.set_symbol_url, c.set_id]);
+      }
+    }
   });
 }
+const saveCardDetail = (c: CardDetail) => saveCardDetails([c]);
 
 async function sets(): Promise<SetBrief[]> {
   const db = await getDb();
@@ -206,14 +212,20 @@ async function cardsByIds(ids: string[]): Promise<CardListItem[]> {
   return unique.map((id) => have.get(id)).filter((c): c is CardListItem => !!c);
 }
 
-type CardRow = CardListItem & { detail: string | null };
+type CardRow = CardListItem & { detail: string | null; live_symbol: string | null };
 const inflight = new Set<string>();
 
 function toDetail(row: CardRow, rarityIconUrl: string | null): CardDetail | null {
   if (!row.detail) return null;
   try {
-    const { detail, ...list } = row;
-    return { ...list, ...JSON.parse(detail), rarity_icon_url: rarityIconUrl } as CardDetail;
+    const { detail, live_symbol, ...list } = row;
+    const parsed = JSON.parse(detail);
+    return {
+      ...list,
+      ...parsed,
+      set_symbol_url: live_symbol ?? parsed.set_symbol_url ?? null,
+      rarity_icon_url: rarityIconUrl,
+    } as CardDetail;
   } catch {
     return null;
   }
@@ -221,7 +233,12 @@ function toDetail(row: CardRow, rarityIconUrl: string | null): CardDetail | null
 
 async function card(id: string, onFresh?: (fresh: CardDetail) => void): Promise<CardDetail> {
   const db = await getDb();
-  const row = await db.getFirstAsync<CardRow>(`SELECT ${CARD_COLS}, detail FROM cards WHERE id = ?`, [id]);
+  const row = await db.getFirstAsync<CardRow>(
+    `SELECT ${CARD_COLS}, detail,
+            (SELECT symbol_url FROM sets WHERE sets.id = cards.set_id) AS live_symbol
+     FROM cards WHERE id = ?`,
+    [id],
+  );
   if (row) await ensureRarities();
   const cached = row ? toDetail(row, await iconUrlFor(row.rarity)) : null;
 
@@ -235,7 +252,7 @@ async function card(id: string, onFresh?: (fresh: CardDetail) => void): Promise<
           await ensureRarities();
           onFresh(fresh);
         })
-        .catch(() => {})
+        .catch((err) => console.warn('Card refresh failed:', id, (err as Error).message))
         .finally(() => inflight.delete(id));
     }
     return cached;
@@ -246,4 +263,26 @@ async function card(id: string, onFresh?: (fresh: CardDetail) => void): Promise<
   return fresh;
 }
 
-export const catalog = { sets, set, cardsByIds, card, syncRarities, ensureRarities };
+const DETAIL_BATCH = 50;
+
+async function prefetchDetails(ids: string[], maxCards = 600): Promise<{ saved: number; unavailable: number }> {
+  const db = await getDb();
+  const need: string[] = [];
+  for (const part of chunk([...new Set(ids)], 500)) {
+    const rows = await db.getAllAsync<{ id: string }>(
+      `SELECT id FROM cards WHERE detail IS NULL AND id IN (${placeholders(part.length)})`,
+      part,
+    );
+    need.push(...rows.map((r) => r.id));
+  }
+  const batch = need.slice(0, maxCards);
+  let saved = 0;
+  for (const part of chunk(batch, DETAIL_BATCH)) {
+    const list = await remote.cardDetails(part);
+    await saveCardDetails(list);
+    saved += list.length;
+  }
+  return { saved, unavailable: batch.length - saved };
+}
+
+export const catalog = { sets, set, cardsByIds, card, syncRarities, ensureRarities, prefetchDetails };

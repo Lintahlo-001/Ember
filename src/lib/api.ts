@@ -102,6 +102,7 @@ export const api = {
     }
     return out;
   },
+  cardDetails: (ids: string[]) => request<CardDetail[]>('/cards/details', { method: 'POST', body: { ids } }),
 };
 
 export type Suggestion = { label: string; kind: 'card' | 'artist' };

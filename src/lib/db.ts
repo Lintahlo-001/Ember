@@ -114,6 +114,13 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX image_files_lru_idx ON image_files(pinned, last_used);
   `,
+    `
+  CREATE TABLE image_misses (
+    url        TEXT PRIMARY KEY NOT NULL,
+    status     INTEGER NOT NULL,
+    checked_at TEXT NOT NULL
+  );
+  `,
 ];
 
 async function open(): Promise<SQLite.SQLiteDatabase> {

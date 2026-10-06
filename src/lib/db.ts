@@ -125,7 +125,7 @@ const MIGRATIONS: string[] = [
 
 async function open(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DB_NAME);
-  await db.execAsync('PRAGMA journal_mode = WAL;');
+  await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
 
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   for (let v = row?.user_version ?? 0; v < MIGRATIONS.length; v++) {
@@ -159,4 +159,24 @@ export async function setMeta(key: string, value: string): Promise<void> {
     'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
     [key, value],
   );
+}
+
+type TxTask = Parameters<SQLite.SQLiteDatabase['withExclusiveTransactionAsync']>[0];
+
+const isBusy = (e: unknown) => /database is locked|SQLITE_BUSY|code 5/i.test(String((e as Error)?.message));
+
+export async function withRetry<T>(fn: () => Promise<T>, tries = 5): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (!isBusy(e) || i >= tries - 1) throw e;
+      await new Promise((r) => setTimeout(r, 100 * 2 ** i));
+    }
+  }
+}
+
+export async function runTx(task: TxTask): Promise<void> {
+  const db = await getDb();
+  return withRetry(() => db.withExclusiveTransactionAsync(task));
 }

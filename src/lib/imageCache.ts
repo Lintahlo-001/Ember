@@ -1,4 +1,4 @@
-import { getDb, getMeta, setMeta } from '@/src/lib/db';
+import { getDb, getMeta, runTx, setMeta, withRetry } from '@/src/lib/db';
 import { Directory, File, Paths } from 'expo-file-system';
 import { AppState } from 'react-native';
 
@@ -122,7 +122,7 @@ async function flushTouches(): Promise<void> {
   touched.clear();
   const db = await getDb();
   const now = new Date().toISOString();
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await runTx(async (tx) => {
     for (const part of chunk(urls, 500)) {
       await tx.runAsync(`UPDATE image_files SET last_used = ? WHERE url IN (${ph(part.length)})`, [now, ...part]);
     }
@@ -175,11 +175,11 @@ async function download(url: string, kind: ImageKind, pin: boolean): Promise<voi
       if (file.exists) file.delete();
       await file.write(bytes);
       const db = await getDb();
-      await db.runAsync(
-        `INSERT INTO image_files (url, kind, file_name, bytes, pinned, last_used) VALUES (?,?,?,?,?,?)
-         ON CONFLICT(url) DO UPDATE SET kind = excluded.kind, file_name = excluded.file_name,
-           bytes = excluded.bytes, pinned = excluded.pinned, last_used = excluded.last_used`,
-        [url, kind, fileName, bytes.byteLength, pin ? 1 : 0, new Date().toISOString()],
+      await withRetry(() =>
+        db.runAsync(
+          `INSERT INTO image_files ...`,
+          [url, kind, fileName, bytes.byteLength, pin ? 1 : 0, new Date().toISOString()],
+        ),
       );
     } catch (err) {
       try { if (file.exists) file.delete(); } catch {}
@@ -268,7 +268,7 @@ async function runSync(cardIds: string[]): Promise<SyncResult> {
   }
 
   const urls = [...wanted.keys()];
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await runTx(async (tx) => {
     await tx.runAsync('UPDATE image_files SET pinned = 0 WHERE pinned = 1');
     for (const part of chunk(urls, 500)) {
       await tx.runAsync(`UPDATE image_files SET pinned = 1 WHERE url IN (${ph(part.length)})`, part);

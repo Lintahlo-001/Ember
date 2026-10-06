@@ -6,7 +6,7 @@ import {
   type SetBrief,
   type SetDetail,
 } from '@/src/lib/api';
-import { getDb, getMeta, setMeta } from '@/src/lib/db';
+import { getDb, getMeta, runTx, setMeta } from '@/src/lib/db';
 
 const SETS_CACHED_KEY = 'sets_cached_at';
 const RARITIES_CACHED_KEY = 'rarities_cached_at';
@@ -74,7 +74,7 @@ const cardParams = (c: CardListItem) => [
 
 async function saveRarities(list: RarityIcon[]): Promise<void> {
   const db = await getDb();
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await runTx(async (tx) => {
     for (const r of list) {
       await tx.runAsync(
         `INSERT INTO rarities (name, icon_url, icon_version) VALUES (?,?,?)
@@ -110,7 +110,7 @@ async function iconUrlFor(rarity: string | null): Promise<string | null> {
 
 async function saveSets(sets: SetBrief[]): Promise<void> {
   const db = await getDb();
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await runTx(async (tx) => {
     for (const s of sets) await tx.runAsync(UPSERT_SET, setParams(s));
   });
   await setMeta(SETS_CACHED_KEY, new Date().toISOString());
@@ -119,14 +119,14 @@ async function saveSets(sets: SetBrief[]): Promise<void> {
 async function saveCards(cards: CardListItem[]): Promise<void> {
   if (cards.length === 0) return;
   const db = await getDb();
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await runTx(async (tx) => {
     for (const c of cards) await tx.runAsync(UPSERT_CARD, cardParams(c));
   });
 }
 
 async function saveSet(set: SetDetail): Promise<void> {
   const db = await getDb();
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await runTx(async (tx) => {
     await tx.runAsync(UPSERT_SET, setParams(set));
     for (const c of set.cards) await tx.runAsync(UPSERT_CARD, cardParams(c));
     await tx.runAsync('UPDATE sets SET cards_cached_at = ? WHERE id = ?', [new Date().toISOString(), set.id]);
@@ -146,7 +146,7 @@ async function saveCardDetails(list: CardDetail[]): Promise<void> {
   if (list.length === 0) return;
   const db = await getDb();
   const now = new Date().toISOString();
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await runTx(async (tx) => {
     for (const c of list) {
       await tx.runAsync(UPSERT_CARD, cardParams(c));
       await tx.runAsync('UPDATE cards SET detail = ?, detail_synced_at = ? WHERE id = ?', [detailJson(c), now, c.id]);

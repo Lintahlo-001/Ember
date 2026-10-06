@@ -177,7 +177,14 @@ async function download(url: string, kind: ImageKind, pin: boolean): Promise<voi
       const db = await getDb();
       await withRetry(() =>
         db.runAsync(
-          `INSERT INTO image_files ...`,
+          `INSERT INTO image_files (url, kind, file_name, bytes, pinned, last_used)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT(url) DO UPDATE SET
+            kind = excluded.kind,
+            file_name = excluded.file_name,
+            bytes = excluded.bytes,
+            pinned = excluded.pinned,
+            last_used = excluded.last_used`,
           [url, kind, fileName, bytes.byteLength, pin ? 1 : 0, new Date().toISOString()],
         ),
       );

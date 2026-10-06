@@ -16,6 +16,7 @@ import { useScrollToTopOnTabPress } from '@/src/hooks/useScrollToTopOnTabPress';
 import { useSearchSuggestions } from '@/src/hooks/useSearchSuggestions';
 import { type SetBrief, type Suggestion } from '@/src/lib/api';
 import { catalog } from '@/src/lib/catalog';
+import { requestLogout } from '@/src/lib/logout';
 import { groupWithFavorites, ownedPerSet, type SerieGroup } from '@/src/lib/series';
 import theme from '@/src/theme/theme';
 import { router, useFocusEffect } from 'expo-router';
@@ -72,10 +73,7 @@ export default function Dashboard() {
     router.push({ pathname: '/(tabs)/dashboard/search-results', params: { query: q } });
   };
 
-  const handleLogout = async () => {
-    await logout();
-    router.replace('/(auth)/welcome');
-  };
+  const handleLogout = () => requestLogout(logout, () => router.replace('/(auth)/welcome'));
 
   const needle = setFilter.trim().toLowerCase();
   const groups = useMemo(

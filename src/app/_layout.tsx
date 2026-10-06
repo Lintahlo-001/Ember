@@ -1,10 +1,12 @@
 import { AuthProvider, useAuth } from '@/src/context/AuthContext';
 import { imageCache } from '@/src/lib/imageCache';
+import { setIssueHandler } from '@/src/lib/sync';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -19,6 +21,11 @@ function RootLayoutNav() {
     'WorkSans-Regular': require('../../assets/fonts/WorkSans-Regular.ttf'),
     'WorkSans-Medium': require('../../assets/fonts/WorkSans-Medium.ttf'),
   });
+  
+  useEffect(() => {
+    setIssueHandler((message) => Alert.alert('Sync problem', message));
+    return () => setIssueHandler(null);
+  }, []);
 
   useEffect(() => {
     if ((fontsLoaded || fontError) && !authLoading && cacheReady) {

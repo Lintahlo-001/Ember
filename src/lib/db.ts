@@ -162,6 +162,7 @@ export async function setMeta(key: string, value: string): Promise<void> {
 }
 
 type TxTask = Parameters<SQLite.SQLiteDatabase['withExclusiveTransactionAsync']>[0];
+export type Tx = Parameters<TxTask>[0];
 
 const isBusy = (e: unknown) => /database is locked|SQLITE_BUSY|code 5/i.test(String((e as Error)?.message));
 

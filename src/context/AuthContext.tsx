@@ -1,4 +1,6 @@
 import { supabase } from '@/src/lib/supabase';
+import { kickFlush, requestSync, startSync } from '@/src/lib/sync';
+import { bindUser, wipeUserData } from '@/src/lib/userScope';
 import type { Session } from '@supabase/supabase-js';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
@@ -33,11 +35,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
+    let alive = true;
+    supabase.auth.getSession().then(async ({ data }) => {
+      await bindUser(data.session?.user.id ?? null); 
+      if (!alive) return;
+      setSession(data.session);
+      setLoading(false);
+      if (data.session) {
+        startSync();
+        requestSync();
+      }
     });
 
-    return () => listener.subscription.unsubscribe();
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      bindUser(newSession?.user.id ?? null).finally(() => {
+        if (!alive) return;
+        setSession(newSession);
+        if (!newSession) return;
+        startSync();
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') requestSync();
+        else kickFlush(); 
+      });
+    });
+
+    return () => {
+      alive = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   const signInWithPassword: AuthContextType['signInWithPassword'] = async (email, password) => {
@@ -86,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    await wipeUserData(); 
     await supabase.auth.signOut();
   };
 

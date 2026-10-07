@@ -9,15 +9,14 @@ type Props = {
   onToggle: () => void;
   tone: 'series' | 'set';
   leading?: ReactNode;
-  meta?: string;
 };
 
-export default function CollapsibleHeader({ title, collapsed, onToggle, tone, leading, meta }: Props) {
+export default function CollapsibleHeader({ title, collapsed, onToggle, tone, leading }: Props) {
   const color = tone === 'series' ? theme.colors.surface : theme.colors.text;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${title}${meta ? `, ${meta}` : ''}`}
+      accessibilityLabel={title}
       accessibilityState={{ expanded: !collapsed }}
       onPress={onToggle}
       style={[styles.row, tone === 'series' ? styles.series : styles.set]}
@@ -26,7 +25,6 @@ export default function CollapsibleHeader({ title, collapsed, onToggle, tone, le
       <Text style={[styles.title, tone === 'series' ? styles.seriesTitle : null, { color }]} numberOfLines={1}>
         {title}
       </Text>
-      {meta ? <Text style={[styles.meta, { color }]}>{meta}</Text> : null}
       <Icon name={collapsed ? 'chevron-right' : 'chevron-down'} size={22} color={color} />
     </Pressable>
   );
@@ -43,5 +41,4 @@ const styles = StyleSheet.create({
   set: { paddingHorizontal: 2 },
   title: { flex: 1, fontFamily: theme.fonts.bodyMedium, fontSize: theme.fontSizes.base },
   seriesTitle: { fontFamily: theme.fonts.header, fontSize: theme.fontSizes.base },
-  meta: { fontFamily: theme.fonts.body, fontSize: theme.fontSizes.sm },
 });

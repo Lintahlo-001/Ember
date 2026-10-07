@@ -3,6 +3,8 @@ import { catalog, type LocalSetState } from '@/src/lib/catalog';
 import { setMeta } from '@/src/lib/db';
 import { runPinning } from '@/src/lib/pinning';
 import { flush, pendingCount } from '@/src/lib/sync';
+import { setUpdateFlag } from '@/src/lib/updateFlag';
+;
 
 const BIG_SET = 2000;
 
@@ -116,7 +118,8 @@ async function run(onProgress?: (text: string) => void): Promise<RefreshSummary>
 
   summary.pendingChanges = await pendingCount();
   await setMeta('last_refresh_at', new Date().toISOString());
-  await setMeta('update_available', '0');
+  await setMeta('last_check_at', new Date().toISOString());
+  await setUpdateFlag(false);
   return summary;
 }
 

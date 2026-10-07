@@ -12,6 +12,7 @@ import { useFavoriteSets } from '@/src/hooks/useFavoriteSets';
 import { usePinnedImages } from '@/src/hooks/usePinnedImages';
 import { useScrollToTopOnTabPress } from '@/src/hooks/useScrollToTopOnTabPress';
 import { useSearchSuggestions } from '@/src/hooks/useSearchSuggestions';
+import { useUpdateAvailable } from '@/src/hooks/useUpdateAvailable';
 import { type SetBrief, type Suggestion } from '@/src/lib/api';
 import { catalog } from '@/src/lib/catalog';
 import { groupWithFavorites, ownedPerSet, type SerieGroup } from '@/src/lib/series';
@@ -23,6 +24,7 @@ import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from
 const GAP = theme.spacing.space1;
 
 export default function Dashboard() {
+  const updateAvailable = useUpdateAvailable();
   const { width } = useWindowDimensions();
   const [query, setQuery] = useState('');
   const [setFilter, setSetFilter] = useState('');
@@ -85,11 +87,14 @@ export default function Dashboard() {
         </Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Settings"
+          accessibilityLabel={updateAvailable ? 'Settings, update available' : 'Settings'}
           onPress={() => router.push('/(tabs)/dashboard/settings')}
           hitSlop={12}
         >
           <Icon name="settings" size={28} color={theme.colors.text} />
+          {updateAvailable ? (
+            <View style={styles.dot} accessible={false} importantForAccessibility="no-hide-descendants" />
+          ) : null}
         </Pressable>
       </View>
 
@@ -160,6 +165,17 @@ export default function Dashboard() {
 }
 
 const styles = StyleSheet.create({
+  dot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: theme.colors.bg,
+    backgroundColor: theme.colors.accent,
+  },
   content: { paddingBottom: 120 },
   header: { gap: theme.spacing.space2, marginBottom: theme.spacing.space2 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

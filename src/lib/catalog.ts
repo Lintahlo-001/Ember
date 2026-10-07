@@ -355,7 +355,13 @@ async function prefetchDetails(ids: string[], maxCards = 600): Promise<{ saved: 
   return { saved, unavailable: batch.length - saved };
 }
 
+async function localRarities(): Promise<{ name: string; icon_url: string }[]> {
+  const db = await getDb();
+  return db.getAllAsync<{ name: string; icon_url: string }>('SELECT name, icon_url FROM rarities');
+}
+
 export const catalog = {
   sets, set, cardsByIds, card, syncRarities, ensureRarities, prefetchDetails,
   saveSets, removeSets, localSetStates, localCardTriples, applyChanges, refetchSet,
+  localRarities,
 };

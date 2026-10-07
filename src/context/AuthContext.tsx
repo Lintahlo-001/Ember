@@ -1,5 +1,6 @@
 import { supabase } from '@/src/lib/supabase';
 import { kickFlush, requestSync, startSync } from '@/src/lib/sync';
+import { startUpdateChecks } from '@/src/lib/updateCheck';
 import { bindUser, wipeUserData } from '@/src/lib/userScope';
 import type { Session } from '@supabase/supabase-js';
 import { makeRedirectUri } from 'expo-auth-session';
@@ -43,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       if (data.session) {
         startSync();
+        startUpdateChecks();
         requestSync();
       }
     });
@@ -53,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(newSession);
         if (!newSession) return;
         startSync();
+        startUpdateChecks();
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') requestSync();
         else kickFlush(); 
       });

@@ -49,7 +49,9 @@ const UPSERT_SET = `
     name = excluded.name, serie_id = excluded.serie_id, serie_name = excluded.serie_name,
     release_date = excluded.release_date, card_count_total = excluded.card_count_total,
     card_count_official = excluded.card_count_official, logo_url = excluded.logo_url,
-    symbol_url = excluded.symbol_url, images_updated_at = excluded.images_updated_at,
+    symbol_url = excluded.symbol_url,
+    images_updated_at = CASE WHEN sets.cards_cached_at IS NOT NULL THEN sets.images_updated_at
+                             ELSE excluded.images_updated_at END,
     synced_at = excluded.synced_at`;
 
 const UPSERT_CARD = `
@@ -157,6 +159,74 @@ async function saveCardDetails(list: CardDetail[]): Promise<void> {
   });
 }
 const saveCardDetail = (c: CardDetail) => saveCardDetails([c]);
+
+export type LocalSetState = {
+  id: string;
+  synced_at: string | null;
+  images_updated_at: string | null;
+  cards_cached_at: string | null;
+  cards_synced_at: string | null;
+};
+
+async function localSetStates(): Promise<LocalSetState[]> {
+  const db = await getDb();
+  return db.getAllAsync<LocalSetState>(
+    `SELECT s.id, s.synced_at, s.images_updated_at, s.cards_cached_at,
+            (SELECT MAX(c.synced_at) FROM cards c WHERE c.set_id = s.id) AS cards_synced_at
+     FROM sets s`,
+  );
+}
+
+async function localCardTriples(setId: string): Promise<[string, string | null, string | null][]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ id: string; image_version: string | null; synced_at: string | null }>(
+    'SELECT id, image_version, synced_at FROM cards WHERE set_id = ?',
+    [setId],
+  );
+  return rows.map((r) => [r.id, r.image_version, r.synced_at]);
+}
+
+async function applyChanges(
+  setId: string,
+  changed: CardListItem[],
+  removed: string[],
+  imagesUpdatedAt: string | null,
+): Promise<void> {
+  await runTx(async (tx) => {
+    for (const c of changed) await tx.runAsync(UPSERT_CARD, cardParams(c));
+    for (const part of chunk(removed, 500)) {
+      await tx.runAsync(
+        `DELETE FROM cards WHERE set_id = ? AND id IN (${placeholders(part.length)})`,
+        [setId, ...part],
+      );
+    }
+    await tx.runAsync('UPDATE sets SET images_updated_at = ? WHERE id = ?', [imagesUpdatedAt, setId]);
+  });
+}
+
+async function refetchSet(id: string): Promise<void> {
+  const fresh = await remote.set(id);
+  await saveSet(fresh);
+  const db = await getDb();
+  const keep = new Set(fresh.cards.map((c) => c.id));
+  const have = await db.getAllAsync<{ id: string }>('SELECT id FROM cards WHERE set_id = ?', [id]);
+  const gone = have.map((r) => r.id).filter((x) => !keep.has(x));
+  await runTx(async (tx) => {
+    for (const part of chunk(gone, 500)) {
+      await tx.runAsync(`DELETE FROM cards WHERE id IN (${placeholders(part.length)})`, part);
+    }
+    await tx.runAsync('UPDATE sets SET images_updated_at = ? WHERE id = ?', [fresh.images_updated_at ?? null, id]);
+  });
+}
+
+async function removeSets(ids: string[]): Promise<void> {
+  await runTx(async (tx) => {
+    for (const part of chunk(ids, 500)) {
+      await tx.runAsync(`DELETE FROM cards WHERE set_id IN (${placeholders(part.length)})`, part);
+      await tx.runAsync(`DELETE FROM sets WHERE id IN (${placeholders(part.length)})`, part);
+    }
+  });
+}
 
 async function sets(): Promise<SetBrief[]> {
   const db = await getDb();
@@ -285,4 +355,7 @@ async function prefetchDetails(ids: string[], maxCards = 600): Promise<{ saved: 
   return { saved, unavailable: batch.length - saved };
 }
 
-export const catalog = { sets, set, cardsByIds, card, syncRarities, ensureRarities, prefetchDetails };
+export const catalog = {
+  sets, set, cardsByIds, card, syncRarities, ensureRarities, prefetchDetails,
+  saveSets, removeSets, localSetStates, localCardTriples, applyChanges, refetchSet,
+};

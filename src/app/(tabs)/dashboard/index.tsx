@@ -1,4 +1,3 @@
-import Button from '@/src/components/atoms/Button';
 import Icon from '@/src/components/atoms/Icon';
 import Screen from '@/src/components/layout/Screen';
 import NavCard from '@/src/components/molecules/NavCard';
@@ -7,7 +6,6 @@ import SearchSuggestions from '@/src/components/molecules/SearchSuggestions';
 import SetCard from '@/src/components/molecules/SetCard';
 import StatusView from '@/src/components/molecules/StatusView';
 import SeriesGroup, { SERIES_BODY_PADDING } from '@/src/components/organisms/SeriesGroup';
-import { useAuth } from '@/src/context/AuthContext';
 import { useAllOwned } from '@/src/hooks/useAllOwned';
 import { useCollapsed } from '@/src/hooks/useCollapsed';
 import { useFavoriteSets } from '@/src/hooks/useFavoriteSets';
@@ -16,7 +14,6 @@ import { useScrollToTopOnTabPress } from '@/src/hooks/useScrollToTopOnTabPress';
 import { useSearchSuggestions } from '@/src/hooks/useSearchSuggestions';
 import { type SetBrief, type Suggestion } from '@/src/lib/api';
 import { catalog } from '@/src/lib/catalog';
-import { requestLogout } from '@/src/lib/logout';
 import { groupWithFavorites, ownedPerSet, type SerieGroup } from '@/src/lib/series';
 import theme from '@/src/theme/theme';
 import { router, useFocusEffect } from 'expo-router';
@@ -26,7 +23,6 @@ import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from
 const GAP = theme.spacing.space1;
 
 export default function Dashboard() {
-  const { logout } = useAuth();
   const { width } = useWindowDimensions();
   const [query, setQuery] = useState('');
   const [setFilter, setSetFilter] = useState('');
@@ -72,8 +68,6 @@ export default function Dashboard() {
     if (!q) return;
     router.push({ pathname: '/(tabs)/dashboard/search-results', params: { query: q } });
   };
-
-  const handleLogout = () => requestLogout(logout, () => router.replace('/(auth)/welcome'));
 
   const needle = setFilter.trim().toLowerCase();
   const groups = useMemo(
@@ -160,12 +154,6 @@ export default function Dashboard() {
             </View>
           </SeriesGroup>
         )}
-        ListFooterComponent={
-          <View style={styles.footer}>
-            {/* Temporary, for testing. Real Log Out lives in Settings (Group 12). */}
-            <Button label="Log out (testing)" variant="outline" onPress={handleLogout} />
-          </View>
-        }
       />
     </Screen>
   );
@@ -181,5 +169,4 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   empty: { minHeight: 200 },
   emptyText: { fontFamily: theme.fonts.body, fontSize: theme.fontSizes.base, color: theme.colors.text, textAlign: 'center' },
-  footer: { marginTop: theme.spacing.space3 },
 });

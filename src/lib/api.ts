@@ -83,6 +83,9 @@ async function request<T>(path: string, init?: { method?: 'GET' | 'POST'; body?:
 export type RarityIcon = { name: string; icon_url: string; icon_version: string | null };
 
 export const api = {
+  setsStatus: () => request<SetStatus[]>('/sets/status'),
+  setChanges: (id: string, known: [string, string | null, string | null][]) =>
+    request<SetChanges>(`/sets/${encodeURIComponent(id)}/changes`, { method: 'POST', body: { known } }),
   rarities: () => request<RarityIcon[]>('/rarities'),
   sets: () => request<SetBrief[]>('/sets'),
   set: (id: string) => request<SetDetail>(`/sets/${encodeURIComponent(id)}`),
@@ -106,3 +109,11 @@ export const api = {
 };
 
 export type Suggestion = { label: string; kind: 'card' | 'artist' };
+
+export type SetStatus = {
+  id: string;
+  images_updated_at: string | null;
+  synced_at: string | null;
+  cards_synced_at: string | null;
+};
+export type SetChanges = { changed: CardListItem[]; removed: string[] };

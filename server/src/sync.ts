@@ -1,4 +1,5 @@
 import { pool } from './db';
+import { resolveDexIds } from './dexInference';
 import { deleteFallback, MIRROR_PREFIX } from './storage';
 import {
   EmptySet,
@@ -98,14 +99,15 @@ export async function syncCard(cardId: string): Promise<void> {
   if (!setExists.rowCount) await syncSet(card.set.id);
 
   const { value, currency } = extractPrice(card.pricing);
-  const dexIds = Array.isArray(card.dexId) ? card.dexId.filter((n) => Number.isInteger(n)) : [];
+  const given = Array.isArray(card.dexId) ? card.dexId.filter((n) => Number.isInteger(n)) : [];
+  const { ids: dexIds, inferred: dexInferred } = await resolveDexIds(given, card.name, card.category);
 
   await pool.query(
     `INSERT INTO catalog.cards
        (id, set_id, local_id, name, image_base, image_source, category, rarity, illustrator,
-        dex_ids, variants, pricing, price_market, price_currency, detail_synced_at, synced_at)
+        dex_ids, variants, pricing, price_market, price_currency, detail_synced_at, synced_at, dex_inferred)
      VALUES ($1,$2,$3,$4,$5,CASE WHEN $5::text IS NULL THEN NULL ELSE 'tcgdex' END,
-             $6,$7,$8,$9,$10::jsonb,$11::jsonb,$12,$13, now(), now())
+             $6,$7,$8,$9,$10::jsonb,$11::jsonb,$12,$13, now(), now(), $14)
      ON CONFLICT (id) DO UPDATE SET
        name = EXCLUDED.name, local_id = EXCLUDED.local_id,
        image_base = COALESCE(EXCLUDED.image_base, catalog.cards.image_base),
@@ -114,14 +116,14 @@ export async function syncCard(cardId: string): Promise<void> {
        category = EXCLUDED.category, rarity = EXCLUDED.rarity, illustrator = EXCLUDED.illustrator,
        dex_ids = EXCLUDED.dex_ids, variants = EXCLUDED.variants, pricing = EXCLUDED.pricing,
        price_market = EXCLUDED.price_market, price_currency = EXCLUDED.price_currency,
-       detail_synced_at = now(), synced_at = now()`,
+       detail_synced_at = now(), synced_at = now(), dex_inferred = EXCLUDED.dex_inferred`,
     [
       str(card.id), str(card.set.id), String(card.localId ?? card.id).slice(0, 40),
       str(card.name), str(card.image, 500), str(card.category, 60), str(card.rarity, 60),
       str(card.illustrator, 120), dexIds,
       card.variants ? JSON.stringify(card.variants) : null,
       card.pricing ? JSON.stringify(card.pricing) : null,
-      value, currency,
+      value, currency, dexInferred,
     ],
   );
   await reconcileFallback('catalog.cards', 'image_path', 'image_source', card.id, str(card.image, 500));

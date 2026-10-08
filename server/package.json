@@ -19,7 +19,9 @@
     "recheck:images": "ts-node-dev --transpile-only src/jobs/recheckImages.ts",
     "replace:image": "ts-node-dev --transpile-only src/jobs/replaceImage.ts",
     "upload:rarities": "ts-node-dev --transpile-only src/jobs/uploadRarities.ts",
-    "seed:species": "ts-node-dev --transpile-only src/jobs/seedSpecies.ts"
+    "seed:species": "ts-node-dev --transpile-only src/jobs/seedSpecies.ts",
+    "backfill:dex": "ts-node-dev --transpile-only src/jobs/backfillDex.ts",
+    "backfill:dex:prod": "node dist/jobs/backfillDex.js"
   },
   "keywords": [],
   "author": "",

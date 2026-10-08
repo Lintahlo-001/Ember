@@ -3,6 +3,7 @@
 // Never call pool.end() in here: the web server shares the pool.
 // PokeWallet fallback sweeps are NOT part of this: run them by hand
 // with `npm run sweep` so they can't contend with a manual backfill.
+import { refreshFx } from '../fx';
 import { recheckImages } from '../imageRecheck';
 import { recheckFallbackLogos, refreshStaleCards, syncAllSets, syncMissingDetails } from '../sync';
 
@@ -13,13 +14,14 @@ export async function runDailySync(): Promise<string> {
   const cards = await refreshStaleCards();
   const logoChecks = await recheckFallbackLogos();
   const images = await recheckImages(1000);
+  const fx = await refreshFx().then(() => 'ok', (err) => `failed (${(err as Error).message})`);
 
   return (
     `Sync done in ${Math.round((Date.now() - started) / 1000)}s: ` +
     `${sets.discovered} new sets, ${sets.updated} updated sets, ` +
     `${details.done} new card details (${details.failed} failed), ${cards} cards refreshed, ` +
     `${logoChecks.restored}/${logoChecks.checked} fallback logos restored to TCGdex, ` +
-    `${images.checked} images rechecked (${images.changed} changed, ${images.baselined} baselined, ${images.failed} failed)`
-    
+    `${images.checked} images rechecked (${images.changed} changed, ${images.baselined} baselined, ${images.failed} failed), ` +
+    `FX: ${fx}`
   );
 }

@@ -6,6 +6,7 @@ import { pool } from './db';
 import { catalogRouter } from './routes/catalog';
 import { internalSyncRouter } from './routes/internalSync';
 import { pokedexRouter } from './routes/pokedex';
+import { pricingRouter } from './routes/pricing';
 import { ensureLoaded } from './suggest';
 
 dotenv.config();
@@ -48,6 +49,9 @@ app.get('/health', async (_req, res) => {
 
 app.use(internalSyncRouter);
 app.use(requireAuth);
+app.use(catalogRouter);
+app.use(pokedexRouter);
+app.use(pricingRouter);
 app.use(catalogRouter);
 app.use(pokedexRouter);
 

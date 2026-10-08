@@ -1,6 +1,8 @@
 import { api, type RarityIcon } from '@/src/lib/api';
 import { catalog } from '@/src/lib/catalog';
+import { ensureFx } from '@/src/lib/currency';
 import { getMeta, setMeta } from '@/src/lib/db';
+import { syncPrices } from '@/src/lib/prices';
 import { diffStatus } from '@/src/lib/refresh';
 import { setUpdateFlag } from '@/src/lib/updateFlag';
 import { AppState } from 'react-native';
@@ -22,6 +24,9 @@ let lastFailedAt = 0;
 
 async function run(force: boolean): Promise<CheckResult> {
   if (!(await getMeta('sets_cached_at'))) return 'skipped';
+  
+  void syncPrices(force).catch((err) => console.warn('Price sync failed:', (err as Error).message));
+  void ensureFx().catch(() => {});
 
   if (!force) {
     const last = Date.parse((await getMeta(LAST_CHECK)) ?? '');

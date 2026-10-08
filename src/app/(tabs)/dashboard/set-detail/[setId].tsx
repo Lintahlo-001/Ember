@@ -7,6 +7,7 @@ import StatusView from '@/src/components/molecules/StatusView';
 import CardGrid from '@/src/components/organisms/CardGrid';
 import SetDetailHeader from '@/src/components/organisms/SetDetailHeader';
 import { useCardListView } from '@/src/hooks/useCardListView';
+import { useCurrency } from '@/src/hooks/useCurrency';
 import { useOwnedTotals } from '@/src/hooks/useOwnedTotals';
 import { type SetDetail as SetDetailData } from '@/src/lib/api';
 import { totalValue } from '@/src/lib/cardList';
@@ -76,7 +77,8 @@ export default function SetDetail() {
   const view = useCardListView(cards, owned);
 
   const ownedUnique = cards.filter((c) => owned.has(c.id)).length;
-  const value = totalValue(cards, owned);
+  const { code, convert } = useCurrency();
+  const value = totalValue(cards, owned, { code, convert });
 
   const header = set ? (
     <View style={styles.header}>

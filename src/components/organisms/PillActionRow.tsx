@@ -1,7 +1,8 @@
 import IconButton from '@/src/components/atoms/IconButton';
 import LogoImage from '@/src/components/atoms/LogoImage';
 import Pill from '@/src/components/molecules/Pill';
-import { formatPrice, pokemonArtworkUrl } from '@/src/lib/format';
+import { useCurrency } from '@/src/hooks/useCurrency';
+import { pokemonArtworkUrl } from '@/src/lib/format';
 import theme from '@/src/theme/theme';
 import { Pressable, StyleSheet, View } from 'react-native';
 import HeartIcon from '../atoms/icons/HeartIcon';
@@ -13,7 +14,6 @@ type Props = {
   currency: string | null;
   onPokemonPress: (dexId: number) => void;
   onArtistPress: (artist: string) => void;
-  // Wishlist toggle arrives in Group 5; Price detail in Group 9.
   isWishlisted?: boolean;
   onWishlistToggle?: () => void;
   onPricePress?: () => void;
@@ -30,6 +30,10 @@ export default function PillActionRow({
   onWishlistToggle,
   onPricePress,
 }: Props) {
+  
+  const { format } = useCurrency();
+  const priceText = format(price, currency);
+
   return (
     <View style={styles.wrap}>
       <View style={styles.row}>
@@ -66,8 +70,8 @@ export default function PillActionRow({
       <View style={styles.row}>
         <Pill
           icon="info"
-          label={formatPrice(price, currency)}
-          accessibilityLabel={`Market price ${formatPrice(price, currency)}`}
+          label={priceText}
+          accessibilityLabel={`Market price ${priceText}. See pricing details`}
           onPress={onPricePress}
         />
       </View>

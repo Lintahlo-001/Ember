@@ -151,6 +151,9 @@ export default function CardDetailScreen() {
                 onArtistPress={(artist) =>
                   router.push({ pathname: '/(tabs)/dashboard/search-results', params: { artist } })
                 }
+                onPricePress={() =>
+                  router.push({ pathname: '/modals/pricing-detail', params: { cardId: id } })
+                }
               />
             </View>
             <YourCollectionSection

@@ -110,6 +110,16 @@ export const api = {
   regions: () => request<Region[]>('/pokedex/regions'),
   pokemonCards: (dexId: number) =>
     request<{ results: CardListItem[]; truncated: boolean }>(`/pokedex/species/${dexId}/cards`),
+
+  cardPricing: (id: string) => request<CardPricing>(`/cards/${encodeURIComponent(id)}/pricing`),
+  prices: async (ids: string[]) => {
+    const out: PriceUpdate[] = [];
+    for (let i = 0; i < ids.length; i += 200) {
+      out.push(...(await request<PriceUpdate[]>('/cards/prices', { method: 'POST', body: { ids: ids.slice(i, i + 200) } })));
+    }
+    return out;
+  },
+  fx: () => request<FxRates>('/fx'),
 };
 
 export type Suggestion = { label: string; kind: 'card' | 'artist' };
@@ -124,3 +134,21 @@ export type SetChanges = { changed: CardListItem[]; removed: string[] };
 
 export type Species = { dex_id: number; name: string; description: string | null; image_url: string };
 export type Region = { id: string; name: string; dex_start: number; dex_end: number };
+
+export type PriceUpdate = {
+  id: string;
+  price_market: number | null;
+  price_currency: string | null;
+  synced_at: string | null;
+};
+export type VariantPrice = {
+  key: string;
+  label: string;
+  market: number | null;
+  low: number | null;
+  mid: number | null;
+  high: number | null;
+};
+export type PriceSource = { unit: string; updated: string | null; variants: VariantPrice[] };
+export type CardPricing = { card_id: string; tcgplayer: PriceSource | null; cardmarket: PriceSource | null };
+export type FxRates = { base: 'USD'; rates: Record<string, number>; date: string | null; fetched_at: string };

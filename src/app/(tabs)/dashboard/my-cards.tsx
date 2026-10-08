@@ -10,10 +10,10 @@ import StatusView from '@/src/components/molecules/StatusView';
 import { useAllOwned } from '@/src/hooks/useAllOwned';
 import { useCardListView } from '@/src/hooks/useCardListView';
 import { useCollapsed } from '@/src/hooks/useCollapsed';
+import { useCurrency } from '@/src/hooks/useCurrency';
 import { type CardListItem, type SetBrief } from '@/src/lib/api';
 import { totalValue } from '@/src/lib/cardList';
 import { catalog } from '@/src/lib/catalog';
-import { formatPrice } from '@/src/lib/format';
 import { groupBySerie } from '@/src/lib/series';
 import theme from '@/src/theme/theme';
 import { router } from 'expo-router';
@@ -80,7 +80,8 @@ export default function MyCards() {
   const view = useCardListView(searched, owned);
 
   const totalCards = useMemo(() => [...owned.values()].reduce((a, b) => a + b, 0), [owned]);
-  const value = useMemo(() => totalValue(cards, owned), [cards, owned]);
+  const { code, convert, format } = useCurrency();
+  const value = useMemo(() => totalValue(cards, owned, { code, convert }), [cards, owned, code, convert]);
 
   const itemWidth = (width - theme.spacing.space3 * 2 - GAP * (view.columns - 1)) / view.columns;
 
@@ -116,7 +117,7 @@ export default function MyCards() {
     <View style={styles.header}>
       <View style={styles.stats}>
         <StatBox label="Total Cards" value={String(totalCards)} />
-        <StatBox label="Estimated Value" value={formatPrice(value.total, value.currency)} />
+        <StatBox label="Estimated Value" value={format(value.total, value.currency)} />
       </View>
       <SearchBar value={search} onChangeText={setSearch} placeholder="Search a card" />
       <SortFilterBar

@@ -1,6 +1,7 @@
 import LogoImage from '@/src/components/atoms/LogoImage';
 import ProgressBar from '@/src/components/atoms/ProgressBar';
-import { formatPrice, formatReleaseDate } from '@/src/lib/format';
+import { useCurrency } from '@/src/hooks/useCurrency';
+import { formatReleaseDate } from '@/src/lib/format';
 import theme from '@/src/theme/theme';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -25,6 +26,7 @@ export default function SetDetailHeader({
 }: Props) {
   const progress = total > 0 ? owned / total : 0;
   const pct = Math.round(progress * 100);
+  const { format } = useCurrency();
 
   return (
     <View style={styles.card}>
@@ -38,7 +40,7 @@ export default function SetDetailHeader({
         </View>
         <View style={styles.valueBlock}>
           <Text style={styles.small}>Estimated value</Text>
-          <Text style={styles.value}>{formatPrice(totalValue, currency)}</Text>
+          <Text style={styles.value}>{format(totalValue, currency)}</Text>
         </View>
       </View>
 

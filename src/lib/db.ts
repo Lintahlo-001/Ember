@@ -150,6 +150,13 @@ const MIGRATIONS: string[] = [
   FROM cards c, json_each(c.detail, '$.dex_ids') AS j
   WHERE c.detail IS NOT NULL AND json_valid(c.detail);
   `,
+    `
+  CREATE TABLE card_pricing (
+    card_id    TEXT PRIMARY KEY NOT NULL,
+    data       TEXT NOT NULL,
+    fetched_at TEXT NOT NULL
+  );
+  `,
 ];
 
 async function open(): Promise<SQLite.SQLiteDatabase> {

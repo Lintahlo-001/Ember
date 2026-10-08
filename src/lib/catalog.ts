@@ -1,4 +1,6 @@
 import {
+  CardPricing,
+  PriceUpdate,
   Region,
   api as remote,
   Species,
@@ -6,7 +8,7 @@ import {
   type CardListItem,
   type RarityIcon,
   type SetBrief,
-  type SetDetail
+  type SetDetail,
 } from '@/src/lib/api';
 import { getDb, getMeta, runTx, setMeta } from '@/src/lib/db';
 
@@ -476,8 +478,63 @@ async function pokemonCards(
   return readPokemonCards(dexId);
 }
 
+async function applyPrices(list: PriceUpdate[]): Promise<void> {
+  if (list.length === 0) return;
+  await runTx(async (tx) => {
+    for (const p of list) {
+      await tx.runAsync(
+        'UPDATE cards SET price_market = ?, price_currency = ?, synced_at = COALESCE(?, synced_at) WHERE id = ?',
+        [p.price_market, p.price_currency, p.synced_at, p.id],
+      );
+    }
+  });
+}
+
+const PRICING_TTL_MS = 6 * 60 * 60 * 1000;
+const pricingInflight = new Set<string>();
+
+async function savePricing(cardId: string, data: CardPricing): Promise<void> {
+  await runTx(async (tx) => {
+    await tx.runAsync(
+      `INSERT INTO card_pricing (card_id, data, fetched_at) VALUES (?,?,?)
+       ON CONFLICT(card_id) DO UPDATE SET data = excluded.data, fetched_at = excluded.fetched_at`,
+      [cardId, JSON.stringify(data), new Date().toISOString()],
+    );
+  });
+}
+
+async function pricing(cardId: string, onFresh?: (fresh: CardPricing) => void): Promise<CardPricing> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ data: string; fetched_at: string }>(
+    'SELECT data, fetched_at FROM card_pricing WHERE card_id = ?',
+    [cardId],
+  );
+  if (row) {
+    try {
+      const cached = JSON.parse(row.data) as CardPricing;
+      const stale = Date.now() - Date.parse(row.fetched_at) > PRICING_TTL_MS;
+      if (stale && onFresh && !pricingInflight.has(cardId)) {
+        pricingInflight.add(cardId);
+        remote
+          .cardPricing(cardId)
+          .then(async (fresh) => {
+            await savePricing(cardId, fresh);
+            onFresh(fresh);
+          })
+          .catch((err) => console.warn('Pricing refresh failed:', cardId, (err as Error).message))
+          .finally(() => pricingInflight.delete(cardId));
+      }
+      return cached;
+    } catch {
+    }
+  }
+  const fresh = await remote.cardPricing(cardId);
+  await savePricing(cardId, fresh);
+  return fresh;
+}
+
 export const catalog = {
   sets, set, cardsByIds, card, syncRarities, ensureRarities, prefetchDetails,
   saveSets, removeSets, localSetStates, localCardTriples, applyChanges, refetchSet,
-  localRarities, pokedex, speciesById, syncPokedex, pokemonCards,
+  localRarities, pokedex, speciesById, syncPokedex, pokemonCards, applyPrices, pricing
 };

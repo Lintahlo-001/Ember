@@ -2,9 +2,12 @@ import Button from '@/src/components/atoms/Button';
 import Screen from '@/src/components/layout/Screen';
 import AccountCard from '@/src/components/molecules/AccountCard';
 import ConfirmDialog from '@/src/components/molecules/ConfirmDialog';
+import OptionSheet, { OptionRow } from '@/src/components/molecules/OptionSheet';
 import ScreenHeader from '@/src/components/molecules/ScreenHeader';
 import SettingsRow from '@/src/components/molecules/SettingsRow';
 import { useAuth } from '@/src/context/AuthContext';
+import { useCurrency } from '@/src/hooks/useCurrency';
+import { CURRENCIES, ensureFx, setCurrency } from '@/src/lib/currency';
 import { getMeta } from '@/src/lib/db';
 import { formatAgo, formatBytes } from '@/src/lib/format';
 import { imageCache } from '@/src/lib/imageCache';
@@ -33,6 +36,9 @@ export default function Settings() {
   const [cacheBytes, setCacheBytes] = useState<number | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const { code } = useCurrency();
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+  const currencyName = CURRENCIES.find((c) => c.code === code)?.name ?? code;
 
   const loadStatus = useCallback(async () => {
     const [last, flag, p, f, c] = await Promise.all([
@@ -116,7 +122,13 @@ export default function Settings() {
         />
 
         <View style={styles.group}>
-          <SettingsRow icon="refresh-cw" label="Refresh cached data" subtext={refreshSub} onPress={refresh} busy={busy} />
+          <SettingsRow
+            icon="dollar-sign"
+            label="Currency"
+            subtext={`${currencyName} (${code})`}
+            onPress={() => setCurrencyOpen(true)}
+          />
+          <SettingsRow icon="refresh-cw" label="Refresh cached data" subtext={refreshSub} onPress={refresh} busy={busy} showDivider />
           <SettingsRow
             icon="hard-drive"
             label="Clear image cache"
@@ -152,6 +164,20 @@ export default function Settings() {
         onConfirm={clearImages}
         onCancel={() => setConfirmClear(false)}
       />
+      <OptionSheet visible={currencyOpen} title="Currency" onClose={() => setCurrencyOpen(false)}>
+        {CURRENCIES.map((c) => (
+          <OptionRow
+            key={c.code}
+            label={`${c.name} (${c.code})`}
+            selected={c.code === code}
+            onPress={() => {
+              setCurrency(c.code).catch((err) => Alert.alert('Could not save currency', (err as Error).message));
+              ensureFx().catch(() => {});
+              setCurrencyOpen(false);
+            }}
+          />
+        ))}
+      </OptionSheet>
     </Screen>
   );
 }

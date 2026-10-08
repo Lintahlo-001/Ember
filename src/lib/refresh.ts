@@ -1,7 +1,9 @@
 import { api, type SetStatus } from '@/src/lib/api';
 import { catalog, type LocalSetState } from '@/src/lib/catalog';
+import { ensureFx } from '@/src/lib/currency';
 import { setMeta } from '@/src/lib/db';
 import { runPinning } from '@/src/lib/pinning';
+import { syncPrices } from '@/src/lib/prices';
 import { flush, pendingCount } from '@/src/lib/sync';
 import { setUpdateFlag } from '@/src/lib/updateFlag';
 ;
@@ -106,8 +108,12 @@ async function run(onProgress?: (text: string) => void): Promise<RefreshSummary>
   say('Updating icons…');
   await catalog.syncRarities().catch(() => {});
 
-    say('Updating Pokédex…');
+  say('Updating Pokédex…');
   await catalog.syncPokedex().catch(() => {});
+
+  say('Updating prices…');
+  await syncPrices(true).catch((err) => console.warn('Price sync failed:', (err as Error).message));
+  await ensureFx(true).catch(() => {});
 
   say('Updating images…');
   const pinned = await runPinning().catch((err) => {

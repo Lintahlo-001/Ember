@@ -79,7 +79,24 @@ export function applyView(
 export function totalValue(
   cards: CardListItem[],
   owned: Map<string, number>,
+  fx?: { code: string; convert: (value: number, from?: string | null) => number | null },
 ): { total: number; currency: string } {
+  if (fx) {
+    let total = 0;
+    let complete = true;
+    for (const c of cards) {
+      const qty = owned.get(c.id);
+      if (!qty || c.price_market == null) continue;
+      const v = fx.convert(c.price_market, c.price_currency);
+      if (v === null) {
+        complete = false;
+        break;
+      }
+      total += v * qty;
+    }
+    if (complete) return { total, currency: fx.code };
+  }
+
   const sums = new Map<string, number>();
   for (const c of cards) {
     const qty = owned.get(c.id);

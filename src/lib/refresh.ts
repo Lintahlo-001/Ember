@@ -106,6 +106,9 @@ async function run(onProgress?: (text: string) => void): Promise<RefreshSummary>
   say('Updating icons…');
   await catalog.syncRarities().catch(() => {});
 
+    say('Updating Pokédex…');
+  await catalog.syncPokedex().catch(() => {});
+
   say('Updating images…');
   const pinned = await runPinning().catch((err) => {
     console.warn('Pinning failed:', (err as Error).message);

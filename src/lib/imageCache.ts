@@ -2,7 +2,7 @@ import { getDb, getMeta, runTx, setMeta, withRetry } from '@/src/lib/db';
 import { Directory, File, Paths } from 'expo-file-system';
 import { AppState } from 'react-native';
 
-export type ImageKind = 'card' | 'logo' | 'symbol' | 'rarity' | 'misc';
+export type ImageKind = 'card' | 'logo' | 'symbol' | 'rarity' | 'pokemon' | 'misc';
 
 const UNPINNED_CAP_BYTES = 300 * 1024 * 1024;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -252,7 +252,7 @@ type SyncResult = {
   reasons: Record<string, { count: number; sample: string }>;
 };
 
-async function runSync(cardIds: string[]): Promise<SyncResult> {
+async function runSync(cardIds: string[], ownedIds: string[] = []): Promise<SyncResult> {
   await init();
   const db = await getDb();
   const wanted = new Map<string, ImageKind>();
@@ -272,6 +272,15 @@ async function runSync(cardIds: string[]): Promise<SyncResult> {
       part,
     );
     for (const r of rows) if (r.image_url) wanted.set(r.image_url, 'card');
+  }
+
+  for (const part of chunk([...new Set(ownedIds)], 500)) {
+    const rows = await db.getAllAsync<{ image_url: string }>(
+      `SELECT DISTINCT s.image_url FROM species s JOIN card_dex d ON d.dex_id = s.dex_id
+       WHERE d.card_id IN (${ph(part.length)})`,
+      part,
+    );
+    for (const r of rows) wanted.set(r.image_url, 'pokemon');
   }
 
   const urls = [...wanted.keys()];
@@ -308,8 +317,8 @@ async function runSync(cardIds: string[]): Promise<SyncResult> {
 }
 
 let chain: Promise<unknown> = Promise.resolve();
-function syncPinned(cardIds: string[]): Promise<SyncResult> {
-  const next = chain.then(() => runSync(cardIds));
+function syncPinned(cardIds: string[], ownedIds: string[] = []): Promise<SyncResult> {
+  const next = chain.then(() => runSync(cardIds, ownedIds));
   chain = next.catch(() => {});
   return next;
 }

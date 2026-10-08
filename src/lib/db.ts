@@ -121,6 +121,35 @@ const MIGRATIONS: string[] = [
     checked_at TEXT NOT NULL
   );
   `,
+      `
+  CREATE TABLE species (
+    dex_id      INTEGER PRIMARY KEY NOT NULL,
+    name        TEXT NOT NULL,
+    description TEXT,
+    image_url   TEXT NOT NULL
+  );
+  CREATE TABLE regions (
+    id         TEXT PRIMARY KEY NOT NULL,
+    name       TEXT NOT NULL,
+    dex_start  INTEGER NOT NULL,
+    dex_end    INTEGER NOT NULL,
+    sort_order INTEGER NOT NULL
+  );
+  CREATE TABLE card_dex (
+    card_id TEXT NOT NULL,
+    dex_id  INTEGER NOT NULL,
+    PRIMARY KEY (card_id, dex_id)
+  );
+  CREATE INDEX card_dex_dex_idx ON card_dex(dex_id);
+  CREATE TABLE pokemon_cards_cached (
+    dex_id    INTEGER PRIMARY KEY NOT NULL,
+    cached_at TEXT NOT NULL
+  );
+  INSERT OR IGNORE INTO card_dex (card_id, dex_id)
+  SELECT c.id, CAST(j.value AS INTEGER)
+  FROM cards c, json_each(c.detail, '$.dex_ids') AS j
+  WHERE c.detail IS NOT NULL AND json_valid(c.detail);
+  `,
 ];
 
 async function open(): Promise<SQLite.SQLiteDatabase> {

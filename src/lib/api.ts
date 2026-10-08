@@ -106,6 +106,10 @@ export const api = {
     return out;
   },
   cardDetails: (ids: string[]) => request<CardDetail[]>('/cards/details', { method: 'POST', body: { ids } }),
+  species: () => request<Species[]>('/pokedex/species'),
+  regions: () => request<Region[]>('/pokedex/regions'),
+  pokemonCards: (dexId: number) =>
+    request<{ results: CardListItem[]; truncated: boolean }>(`/pokedex/species/${dexId}/cards`),
 };
 
 export type Suggestion = { label: string; kind: 'card' | 'artist' };
@@ -117,3 +121,6 @@ export type SetStatus = {
   cards_synced_at: string | null;
 };
 export type SetChanges = { changed: CardListItem[]; removed: string[] };
+
+export type Species = { dex_id: number; name: string; description: string | null; image_url: string };
+export type Region = { id: string; name: string; dex_start: number; dex_end: number };

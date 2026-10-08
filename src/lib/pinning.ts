@@ -9,10 +9,11 @@ export async function runPinning() {
   const ids = [...new Set([...owned.keys(), ...wished])];
 
   await catalog.ensureRarities();
+  await catalog.pokedex().catch(() => {});
   if (ids.length > 0) {
     await catalog.cardsByIds(ids).catch(() => {});
     await catalog.prefetchDetails(ids).catch(() => {});
   }
-  const images = await imageCache.syncPinned(ids);
+  const images = await imageCache.syncPinned(ids, [...owned.keys()]);
   return { images };
 }

@@ -18,7 +18,7 @@ export const cardNumber = (localId: string, official: number | null | undefined)
   official ? `${localId}/${official}` : localId;
 
 export const pokemonArtworkUrl = (dexId: number) =>
-  `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${dexId}.png`;
+  `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${dexId}.png?v=1`;
 
 const VARIANT_LABELS: Record<string, string> = {
   normal: 'Normal',

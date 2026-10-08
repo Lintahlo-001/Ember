@@ -1,10 +1,12 @@
 import {
+  Region,
   api as remote,
+  Species,
   type CardDetail,
   type CardListItem,
   type RarityIcon,
   type SetBrief,
-  type SetDetail,
+  type SetDetail
 } from '@/src/lib/api';
 import { getDb, getMeta, runTx, setMeta } from '@/src/lib/db';
 
@@ -135,8 +137,10 @@ async function saveSet(set: SetDetail): Promise<void> {
   });
 }
 
+const DETAIL_VERSION = 2;
 const detailJson = (c: CardDetail) =>
   JSON.stringify({
+    v: DETAIL_VERSION,
     dex_ids: c.dex_ids ?? [],
     variant_options: c.variant_options,
     set_name: c.set_name,
@@ -152,6 +156,10 @@ async function saveCardDetails(list: CardDetail[]): Promise<void> {
     for (const c of list) {
       await tx.runAsync(UPSERT_CARD, cardParams(c));
       await tx.runAsync('UPDATE cards SET detail = ?, detail_synced_at = ? WHERE id = ?', [detailJson(c), now, c.id]);
+            await tx.runAsync('DELETE FROM card_dex WHERE card_id = ?', [c.id]);
+      for (const d of c.dex_ids ?? []) {
+        await tx.runAsync('INSERT OR IGNORE INTO card_dex (card_id, dex_id) VALUES (?,?)', [c.id, d]);
+      }
       if (c.set_symbol_url) {
         await tx.runAsync('UPDATE sets SET symbol_url = ? WHERE id = ?', [c.set_symbol_url, c.set_id]);
       }
@@ -340,8 +348,8 @@ async function prefetchDetails(ids: string[], maxCards = 600): Promise<{ saved: 
   const need: string[] = [];
   for (const part of chunk([...new Set(ids)], 500)) {
     const rows = await db.getAllAsync<{ id: string }>(
-      `SELECT id FROM cards WHERE detail IS NULL AND id IN (${placeholders(part.length)})`,
-      part,
+      `SELECT id FROM cards WHERE (detail IS NULL OR detail NOT LIKE ?) AND id IN (${placeholders(part.length)})`,
+      [`%"v":${DETAIL_VERSION}%`, ...part],
     );
     need.push(...rows.map((r) => r.id));
   }
@@ -360,8 +368,116 @@ async function localRarities(): Promise<{ name: string; icon_url: string }[]> {
   return db.getAllAsync<{ name: string; icon_url: string }>('SELECT name, icon_url FROM rarities');
 }
 
+const SPECIES_CACHED_KEY = 'species_cached_at';
+const POKEMON_TTL_MS = 24 * 60 * 60 * 1000;
+const pokemonInflight = new Set<number>();
+
+async function syncPokedex(): Promise<void> {
+  const [list, regions] = await Promise.all([remote.species(), remote.regions()]);
+  if (list.length === 0) throw new Error('Pokédex data is not available yet.');
+  await runTx(async (tx) => {
+    for (const s of list) {
+      await tx.runAsync(
+        `INSERT INTO species (dex_id, name, description, image_url) VALUES (?,?,?,?)
+         ON CONFLICT(dex_id) DO UPDATE SET name = excluded.name,
+           description = excluded.description, image_url = excluded.image_url`,
+        [s.dex_id, s.name, s.description, s.image_url],
+      );
+    }
+    await tx.runAsync('DELETE FROM regions');
+    for (let i = 0; i < regions.length; i++) {
+      const r = regions[i];
+      await tx.runAsync(
+        'INSERT INTO regions (id, name, dex_start, dex_end, sort_order) VALUES (?,?,?,?,?)',
+        [r.id, r.name, r.dex_start, r.dex_end, i],
+      );
+    }
+  });
+  await setMeta(SPECIES_CACHED_KEY, new Date().toISOString());
+}
+
+async function ensurePokedex(): Promise<void> {
+  if (!(await getMeta(SPECIES_CACHED_KEY))) await syncPokedex();
+}
+
+async function pokedex(): Promise<{ species: Species[]; regions: Region[] }> {
+  await ensurePokedex();
+  const db = await getDb();
+  const [species, regions] = await Promise.all([
+    db.getAllAsync<Species>('SELECT dex_id, name, description, image_url FROM species ORDER BY dex_id'),
+    db.getAllAsync<Region>('SELECT id, name, dex_start, dex_end FROM regions ORDER BY sort_order'),
+  ]);
+  return { species, regions };
+}
+
+async function speciesById(dexId: number): Promise<Species | null> {
+  await ensurePokedex();
+  const db = await getDb();
+  return (
+    (await db.getFirstAsync<Species>(
+      'SELECT dex_id, name, description, image_url FROM species WHERE dex_id = ?',
+      [dexId],
+    )) ?? null
+  );
+}
+
+async function savePokemonCards(dexId: number, cards: CardListItem[]): Promise<void> {
+  await runTx(async (tx) => {
+    for (const c of cards) await tx.runAsync(UPSERT_CARD, cardParams(c));
+    await tx.runAsync('DELETE FROM card_dex WHERE dex_id = ?', [dexId]);
+    for (const c of cards) {
+      await tx.runAsync('INSERT OR IGNORE INTO card_dex (card_id, dex_id) VALUES (?,?)', [c.id, dexId]);
+    }
+    await tx.runAsync(
+      `INSERT INTO pokemon_cards_cached (dex_id, cached_at) VALUES (?,?)
+       ON CONFLICT(dex_id) DO UPDATE SET cached_at = excluded.cached_at`,
+      [dexId, new Date().toISOString()],
+    );
+  });
+}
+
+async function readPokemonCards(dexId: number): Promise<CardListItem[]> {
+  const db = await getDb();
+  const cards = await db.getAllAsync<CardListItem>(
+    `SELECT ${CARD_COLS} FROM cards WHERE id IN (SELECT card_id FROM card_dex WHERE dex_id = ?)`,
+    [dexId],
+  );
+  return cards.sort((a, b) => (a.set_id < b.set_id ? -1 : a.set_id > b.set_id ? 1 : byNumber(a, b)));
+}
+
+async function pokemonCards(
+  dexId: number,
+  onFresh?: (fresh: CardListItem[]) => void,
+): Promise<CardListItem[]> {
+  const db = await getDb();
+  const mark = await db.getFirstAsync<{ cached_at: string }>(
+    'SELECT cached_at FROM pokemon_cards_cached WHERE dex_id = ?',
+    [dexId],
+  );
+
+  if (mark) {
+    const stale = Date.now() - Date.parse(mark.cached_at) > POKEMON_TTL_MS;
+    if (stale && onFresh && !pokemonInflight.has(dexId)) {
+      pokemonInflight.add(dexId);
+      remote
+        .pokemonCards(dexId)
+        .then(async (r) => {
+          await savePokemonCards(dexId, r.results);
+          onFresh(await readPokemonCards(dexId));
+        })
+        .catch((err) => console.warn('Pokémon refresh failed:', dexId, (err as Error).message))
+        .finally(() => pokemonInflight.delete(dexId));
+    }
+    return readPokemonCards(dexId);
+  }
+
+  const fresh = await remote.pokemonCards(dexId);
+  await savePokemonCards(dexId, fresh.results);
+  return readPokemonCards(dexId);
+}
+
 export const catalog = {
   sets, set, cardsByIds, card, syncRarities, ensureRarities, prefetchDetails,
   saveSets, removeSets, localSetStates, localCardTriples, applyChanges, refetchSet,
-  localRarities,
+  localRarities, pokedex, speciesById, syncPokedex, pokemonCards,
 };

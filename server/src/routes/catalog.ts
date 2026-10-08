@@ -29,10 +29,10 @@ const versioned = (url: string | null, v: string | null | undefined) =>
 const cardImage = (c: { image_base: string | null; image_path: string | null; image_version?: string | null }) =>
   versioned(resolveAsset(c.image_base ? `${c.image_base}/high.webp` : null, c.image_path), c.image_version);
 
-const LIST_COLS = `id, set_id, local_id, name, image_base, image_path, image_version,
+export const LIST_COLS = `id, set_id, local_id, name, image_base, image_path, image_version,
                    rarity, illustrator, price_market, price_currency, synced_at`;
 
-const num = (v: unknown): number | null => (v == null ? null : Number(v));
+export const num = (v: unknown): number | null => (v == null ? null : Number(v));
 
 function variantOptions(v: unknown): string[] {
   if (v && typeof v === 'object') {
@@ -44,7 +44,7 @@ function variantOptions(v: unknown): string[] {
   return ['normal'];
 }
 
-function toListItem(c: any) {
+export function toListItem(c: any) {
   return {
     id: c.id,
     set_id: c.set_id,

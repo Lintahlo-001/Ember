@@ -18,7 +18,8 @@
     "purge:empty": "ts-node-dev --transpile-only src/jobs/purgeEmptySets.ts",
     "recheck:images": "ts-node-dev --transpile-only src/jobs/recheckImages.ts",
     "replace:image": "ts-node-dev --transpile-only src/jobs/replaceImage.ts",
-    "upload:rarities": "ts-node-dev --transpile-only src/jobs/uploadRarities.ts"
+    "upload:rarities": "ts-node-dev --transpile-only src/jobs/uploadRarities.ts",
+    "seed:species": "ts-node-dev --transpile-only src/jobs/seedSpecies.ts"
   },
   "keywords": [],
   "author": "",

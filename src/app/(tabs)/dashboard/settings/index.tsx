@@ -128,7 +128,7 @@ export default function Settings() {
           <SettingsRow
             icon="info"
             label="About"
-            subtext={`Version ${Constants.expoConfig?.version ?? '1.0.0'}`}
+            subtext={`Version ${Constants.expoConfig?.version ?? '1.0.0'}\nCard data from TCGdex & Pokéwallet . Pokémon data and artwork from PokeAPI. Pokémon and Pokémon character names are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc.`}
             showDivider
           />
         </View>

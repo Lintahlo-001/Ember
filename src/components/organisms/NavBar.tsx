@@ -12,7 +12,9 @@ type NavBarProps = Parameters<TabBarRenderer>[0];
 
 const TAB_WIDTH =90;
 const TAB_GAP = 15;
+const BORDER = 1.5;
 const RADIUS = 12;
+const INNER_RADIUS = RADIUS - BORDER; 
 
 const TAB_ORDER = ['wishlist', 'dashboard', 'pokedex'];
 const rank = (name: string) => {
@@ -95,17 +97,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   shadowWrapper: {
-    borderRadius: RADIUS,
-    backgroundColor: theme.colors.surface,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+  borderRadius: RADIUS,
+  borderWidth: BORDER,
+  borderColor: theme.colors.text,
+  backgroundColor: theme.colors.surface,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.12,
+  shadowRadius: 6,
+  elevation: 4,
   },
   blur: {
-    borderRadius: RADIUS,
-    overflow: 'hidden',
+  borderRadius: INNER_RADIUS,
+  overflow: 'hidden',
   },
   tint: {
     position: 'absolute',
@@ -125,11 +129,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 1,
     paddingVertical: 5,
-    borderRadius: RADIUS,
+    borderRadius: INNER_RADIUS,
     overflow: 'hidden',
     backgroundColor: 'transparent',
   },
-    tabActive: {
+  tabActive: {
     backgroundColor: theme.colors.accent,
   },
   label: {

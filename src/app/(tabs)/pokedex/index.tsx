@@ -8,6 +8,7 @@ import RegionToggle from '@/src/components/molecules/RegionToggle';
 import SearchBar from '@/src/components/molecules/SearchBar';
 import StatusView from '@/src/components/molecules/StatusView';
 import RegionSelectSheet from '@/src/components/organisms/RegionSelectSheet';
+import { useBackToDashboard } from '@/src/hooks/useBackToDashboard';
 import { useOwnedDex, usePokedexData } from '@/src/hooks/usePokedexData';
 import { useScrollToTopOnTabPress } from '@/src/hooks/useScrollToTopOnTabPress';
 import type { Species } from '@/src/lib/api';
@@ -22,6 +23,7 @@ const GAP = theme.spacing.space1;
 const SORT_KEYS = Object.keys(DEX_SORT_LABELS) as DexSortKey[];
 
 export default function Pokedex() {
+  useBackToDashboard();
   const { width } = useWindowDimensions();
   const { data, error, reload } = usePokedexData();
   const ownedDex = useOwnedDex();

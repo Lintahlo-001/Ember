@@ -1,5 +1,5 @@
 import NavBar from '@/src/components/organisms/NavBar';
-import { router, Tabs, usePathname } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import { useEffect } from 'react';
 import { BackHandler } from 'react-native';
 
@@ -7,13 +7,9 @@ export default function TabsLayout() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const atDashboard = pathname === '/dashboard';
-    const atOtherRoot = pathname === '/wishlist' || pathname === '/pokedex';
-    if (!atDashboard && !atOtherRoot) return;
-
+    if (pathname !== '/dashboard') return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (atDashboard) BackHandler.exitApp();
-      else router.navigate('/(tabs)/dashboard');
+      BackHandler.exitApp();
       return true;
     });
     return () => subscription.remove();

@@ -12,6 +12,7 @@ import { type CardDetail as CardDetailData } from '@/src/lib/api';
 import { catalog } from '@/src/lib/catalog';
 import { cardNumber } from '@/src/lib/format';
 import { deleteEntry, fetchEntries, updateEntry, type OwnershipEntry } from '@/src/lib/ownership';
+import { pokemonDetailHref, useTabStack } from '@/src/lib/routes';
 import { addToWishlist, isWishlisted, removeFromWishlist } from '@/src/lib/wishlist';
 import theme from '@/src/theme/theme';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -32,6 +33,7 @@ export default function CardDetailScreen() {
   const [zoomed, setZoomed] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<OwnershipEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const stack = useTabStack();
 
   useEffect(() => {
     let cancelled = false;
@@ -145,9 +147,7 @@ export default function CardDetailScreen() {
                 currency={card.price_currency}
                 isWishlisted={wishlisted}
                 onWishlistToggle={toggleWishlist}
-                onPokemonPress={(pokemonId) =>
-                  router.push({ pathname: '/(tabs)/pokedex/pokemon-detail/[pokemonId]', params: { pokemonId: String(pokemonId) } })
-                }
+                onPokemonPress={(pokemonId) => router.push(pokemonDetailHref(stack, pokemonId))}
                 onArtistPress={(artist) =>
                   router.push({ pathname: '/(tabs)/dashboard/search-results', params: { artist } })
                 }

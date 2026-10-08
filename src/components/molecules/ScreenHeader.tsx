@@ -3,11 +3,13 @@ import theme from '@/src/theme/theme';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-export default function ScreenHeader({ title }: { title: string }) {
+type Props = { title: string; onBack?: () => void };
+
+export default function ScreenHeader({ title, onBack }: Props) {
   return (
     <View style={styles.row}>
       <Pressable
-        onPress={() => router.back()}
+        onPress={onBack ?? (() => router.back())}
         accessibilityRole="button"
         accessibilityLabel="Go back"
         hitSlop={12}

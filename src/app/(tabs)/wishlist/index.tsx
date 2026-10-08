@@ -2,6 +2,7 @@ import Screen from '@/src/components/layout/Screen';
 import SortFilterBar from '@/src/components/molecules/SortFilterBar';
 import StatusView from '@/src/components/molecules/StatusView';
 import CardGrid from '@/src/components/organisms/CardGrid';
+import { useBackToDashboard } from '@/src/hooks/useBackToDashboard';
 import { useCardListView } from '@/src/hooks/useCardListView';
 import { useOwnedTotals } from '@/src/hooks/useOwnedTotals';
 import { useScrollToTopOnTabPress } from '@/src/hooks/useScrollToTopOnTabPress';
@@ -14,6 +15,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 export default function Wishlist() {
+  useBackToDashboard();
   const [cards, setCards] = useState<CardListItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);

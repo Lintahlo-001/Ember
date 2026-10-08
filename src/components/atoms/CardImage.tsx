@@ -1,5 +1,6 @@
 import CardPlaceholder from '@/src/components/atoms/CardPlaceholder';
 import { useCachedImage } from '@/src/hooks/useCachedImage';
+import { hasShown, markShown } from '@/src/lib/shownImages';
 import { Image } from 'expo-image';
 import { StyleSheet, type ImageStyle, type StyleProp } from 'react-native';
 
@@ -15,12 +16,15 @@ export default function CardImage({ uri, name, style, cacheOnView }: Props) {
 
   if (!img.uri) return <CardPlaceholder style={style} />;
 
+  const shown = img.uri;
   return (
     <Image
-      source={{ uri: img.uri }}
+      source={{ uri: shown }}
       style={[styles.image, style]}
       contentFit="contain"
-      transition={150}
+      cachePolicy="memory-disk"
+      transition={hasShown(shown) ? 0 : 150}
+      onLoad={() => markShown(shown)}
       accessibilityLabel={name}
       onError={img.onError}
     />

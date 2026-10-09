@@ -3,7 +3,7 @@ import ProgressBar from '@/src/components/atoms/ProgressBar';
 import { useCurrency } from '@/src/hooks/useCurrency';
 import { formatReleaseDate } from '@/src/lib/format';
 import theme from '@/src/theme/theme';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 type Props = {
   name: string;
@@ -13,6 +13,7 @@ type Props = {
   currency: string;
   owned: number;
   total: number;
+  onPress?: () => void;
 };
 
 export default function SetDetailHeader({
@@ -23,13 +24,14 @@ export default function SetDetailHeader({
   currency,
   owned,
   total,
+  onPress,
 }: Props) {
   const progress = total > 0 ? owned / total : 0;
   const pct = Math.round(progress * 100);
   const { format } = useCurrency();
 
-  return (
-    <View style={styles.card}>
+  const body = (
+    <>
       <View style={styles.top}>
         <LogoImage uri={logoUri} label={`${name} logo`} style={styles.logo} iconSize={32} />
         <View style={styles.titleBlock}>
@@ -51,7 +53,20 @@ export default function SetDetailHeader({
         <Text style={styles.small}>{pct}% complete</Text>
       </View>
       <ProgressBar value={progress} label={`${name} collection progress`} />
-    </View>
+    </>
+  );
+
+  if (!onPress) return <View style={styles.card}>{body}</View>;
+  return (
+    <Pressable
+      style={styles.card}
+      accessibilityRole="button"
+      accessibilityLabel={`${name}, ${owned} of ${total} owned, ${pct} percent complete`}
+      accessibilityHint="Opens the rarity breakdown"
+      onPress={onPress}
+    >
+      {body}
+    </Pressable>
   );
 }
 

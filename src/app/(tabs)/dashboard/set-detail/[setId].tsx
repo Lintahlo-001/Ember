@@ -90,6 +90,9 @@ export default function SetDetail() {
         currency={value.currency}
         owned={ownedUnique}
         total={cards.length}
+        onPress={() =>
+          router.push({ pathname: '/(tabs)/dashboard/set-breakdown/[setId]', params: { setId: id } })
+        }
       />
       <SortFilterBar
         sortKey={view.sortKey}

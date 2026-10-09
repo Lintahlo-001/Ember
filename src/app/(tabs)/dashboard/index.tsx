@@ -5,6 +5,7 @@ import SearchBar from '@/src/components/molecules/SearchBar';
 import SearchSuggestions from '@/src/components/molecules/SearchSuggestions';
 import SetCard from '@/src/components/molecules/SetCard';
 import StatusView from '@/src/components/molecules/StatusView';
+import { OnboardingHint } from '@/src/components/organisms/OnboardingHint';
 import SeriesGroup, { SERIES_BODY_PADDING } from '@/src/components/organisms/SeriesGroup';
 import { useAllOwned } from '@/src/hooks/useAllOwned';
 import { useCollapsed } from '@/src/hooks/useCollapsed';
@@ -15,6 +16,7 @@ import { useSearchSuggestions } from '@/src/hooks/useSearchSuggestions';
 import { useUpdateAvailable } from '@/src/hooks/useUpdateAvailable';
 import { type SetBrief, type Suggestion } from '@/src/lib/api';
 import { catalog } from '@/src/lib/catalog';
+import { hasSeenOnboarding, markOnboardingSeen } from '@/src/lib/onboarding';
 import { groupWithFavorites, ownedPerSet, type SerieGroup } from '@/src/lib/series';
 import theme from '@/src/theme/theme';
 import { router, useFocusEffect } from 'expo-router';
@@ -24,6 +26,12 @@ import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from
 const GAP = theme.spacing.space1;
 
 export default function Dashboard() {
+  const [showHint, setShowHint] = useState(false);
+  useFocusEffect(useCallback(() => {
+    let alive = true;
+    hasSeenOnboarding().then((seen) => { if (alive && !seen) setShowHint(true); }).catch(() => {});
+    return () => { alive = false; };
+  }, []));
   const updateAvailable = useUpdateAvailable();
   const { width } = useWindowDimensions();
   const [query, setQuery] = useState('');
@@ -160,6 +168,7 @@ export default function Dashboard() {
           </SeriesGroup>
         )}
       />
+      <OnboardingHint visible={showHint} onClose={() => { setShowHint(false); markOnboardingSeen(); }} />
     </Screen>
   );
 }

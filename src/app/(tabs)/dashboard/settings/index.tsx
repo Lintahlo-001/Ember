@@ -10,6 +10,7 @@ import { ToggleRow } from '@/src/components/molecules/ToggleRow';
 import { useAuth } from '@/src/context/AuthContext';
 import { useCurrency } from '@/src/hooks/useCurrency';
 import { CURRENCIES, ensureFx, setCurrency } from '@/src/lib/currency';
+import { clearOwnedCards, clearWishlist } from '@/src/lib/dataReset';
 import { getMeta } from '@/src/lib/db';
 import { formatAgo, formatBytes } from '@/src/lib/format';
 import { imageCache } from '@/src/lib/imageCache';
@@ -45,6 +46,9 @@ export default function Settings() {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const dimCards = useDimUnownedCards();
   const dimPokemon = useDimUnownedPokemon();
+  const [clearKind, setClearKind] = useState<'owned' | 'wishlist' | null>(null);
+  const [clearBusy, setClearBusy] = useState(false);
+  const [notice, setNotice] = useState<{ title: string; message: string } | null>(null);
 
   const loadStatus = useCallback(async () => {
     const [last, flag, p, f, c] = await Promise.all([
@@ -113,6 +117,23 @@ export default function Settings() {
         .filter(Boolean)
         .join('\n');
 
+  async function doClear() {
+    const kind = clearKind;
+    if (!kind) return;
+    setClearKind(null);
+    setClearBusy(true);
+    try {
+      const n = await (kind === 'owned' ? clearOwnedCards() : clearWishlist());
+      setNotice(kind === 'owned'
+        ? { title: 'Owned cards cleared', message: `Removed ${n} owned ${n === 1 ? 'entry' : 'entries'}.` }
+        : { title: 'Wishlist cleared', message: `Removed ${n} wishlisted ${n === 1 ? 'card' : 'cards'}.` });
+    } catch (e) {
+      setNotice({ title: "Couldn't clear", message: (e as Error).message });
+    } finally {
+      setClearBusy(false);
+    }
+  }
+
   return (
     <Screen>
       <ScreenHeader title="Settings" />
@@ -153,6 +174,11 @@ export default function Settings() {
         </View>
 
         <View style={styles.spacer} />
+          <SettingsRow icon="trash-2" label="Clear owned cards" subtext={clearBusy ? 'Working…' : 'Remove every card you marked as owned'} onPress={() => !clearBusy && setClearKind('owned')} showDivider/>
+          <SettingsRow icon="heart" label="Clear wishlist" subtext={clearBusy ? 'Working…' : 'Remove every wishlisted card'} onPress={() => !clearBusy && setClearKind('wishlist')} showDivider/>
+        <View style={styles.group}>
+
+        </View>
 
         <Button
           label="Log Out"
@@ -173,6 +199,21 @@ export default function Settings() {
         onCancel={() => setConfirmLogout(false)}
         onConfirm={() => { setConfirmLogout(false); requestLogout(logout, () => router.replace('/(auth)/welcome')); }}
       />
+
+      <ActionDialog
+        visible={!!clearKind}
+        icon="trash-2"
+        destructive
+        title={clearKind === 'owned' ? 'Clear all owned cards?' : 'Clear your wishlist?'}
+        message={clearKind === 'owned'
+          ? "This permanently removes every owned entry from your account on all your devices. Your wishlist isn't affected. This can't be undone."
+          : "This permanently removes every wishlisted card from your account on all your devices. Your owned cards aren't affected. This can't be undone."}
+        confirmLabel={clearKind === 'owned' ? 'Clear owned cards' : 'Clear wishlist'}
+        cancelLabel="Cancel"
+        onCancel={() => setClearKind(null)}
+        onConfirm={doClear}
+      />
+      <ActionDialog visible={!!notice} title={notice?.title ?? ''} message={notice?.message} confirmLabel="OK" onConfirm={() => setNotice(null)} />
 
       <ConfirmDialog
         visible={confirmClear}

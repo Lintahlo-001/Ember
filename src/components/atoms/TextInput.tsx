@@ -2,7 +2,13 @@ import Icon from '@/src/components/atoms/Icon';
 import theme from '@/src/theme/theme';
 import type { ComponentProps } from 'react';
 import { useState } from 'react';
-import { Pressable, TextInput as RNTextInput, StyleSheet, View } from 'react-native';
+import {
+  Pressable,
+  TextInput as RNTextInput,
+  StyleSheet,
+  View,
+  type TextInputProps,
+} from 'react-native';
 
 type Props = {
   value: string;
@@ -11,9 +17,11 @@ type Props = {
   secureTextEntry?: boolean;
   error?: boolean;
   leftIcon?: ComponentProps<typeof Icon>['name'];
-  keyboardType?: 'default' | 'email-address' | 'number-pad';
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  textContentType?: ComponentProps<typeof RNTextInput>['textContentType'];
+  keyboardType?: TextInputProps['keyboardType'];
+  autoCapitalize?: TextInputProps['autoCapitalize'];
+  autoComplete?: TextInputProps['autoComplete'];
+  autoCorrect?: boolean;
+  textContentType?: TextInputProps['textContentType'];
   multiline?: boolean;
   maxLength?: number;
 };
@@ -27,6 +35,8 @@ export default function TextInput({
   leftIcon,
   keyboardType = 'default',
   autoCapitalize = 'none',
+  autoComplete,
+  autoCorrect,
   textContentType,
   multiline,
   maxLength,
@@ -42,7 +52,14 @@ export default function TextInput({
         error && styles.wrapperError,
       ]}
     >
-      {leftIcon ? <Icon name={leftIcon} size={18} color={theme.colors.text} /> : null}
+      {leftIcon ? (
+        <Icon
+          name={leftIcon}
+          size={18}
+          color={theme.colors.text}
+        />
+      ) : null}
+
       <RNTextInput
         value={value}
         onChangeText={onChangeText}
@@ -51,19 +68,31 @@ export default function TextInput({
         secureTextEntry={isPasswordField && !isVisible}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
+        autoComplete={autoComplete}
+        autoCorrect={autoCorrect}
         textContentType={textContentType}
         multiline={multiline}
         maxLength={maxLength}
-        style={[styles.input, multiline && styles.inputMultiline]}
+        style={[
+          styles.input,
+          multiline && styles.inputMultiline,
+        ]}
       />
+
       {isPasswordField ? (
         <Pressable
           onPress={() => setIsVisible((v) => !v)}
           accessibilityRole="button"
-          accessibilityLabel={isVisible ? 'Hide password' : 'Show password'}
+          accessibilityLabel={
+            isVisible ? 'Hide password' : 'Show password'
+          }
           hitSlop={8}
         >
-          <Icon name={isVisible ? 'eye-off' : 'eye'} size={18} color={theme.colors.text} />
+          <Icon
+            name={isVisible ? 'eye-off' : 'eye'}
+            size={18}
+            color={theme.colors.text}
+          />
         </Pressable>
       ) : null}
     </View>
@@ -82,8 +111,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.space2,
     backgroundColor: theme.colors.surface,
   },
-  wrapperMultiline: { alignItems: 'flex-start' },
-  wrapperError: { borderColor: '#C0392B' },
+  wrapperMultiline: {
+    alignItems: 'flex-start',
+  },
+  wrapperError: {
+    borderColor: '#C0392B',
+  },
   input: {
     flex: 1,
     fontFamily: theme.fonts.body,
@@ -91,5 +124,8 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     paddingVertical: theme.spacing.space1,
   },
-  inputMultiline: { minHeight: 88, textAlignVertical: 'top' },
+  inputMultiline: {
+    minHeight: 88,
+    textAlignVertical: 'top',
+  },
 });

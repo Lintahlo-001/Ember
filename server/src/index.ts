@@ -1,3 +1,4 @@
+import compression from 'compression';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express, { NextFunction, Request, Response } from 'express';
@@ -15,6 +16,7 @@ const app = express();
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
+app.use(compression({ threshold: 1024 }));
 
 const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:8081')
   .split(',')
@@ -49,8 +51,6 @@ app.get('/health', async (_req, res) => {
 
 app.use(internalSyncRouter);
 app.use(requireAuth);
-app.use(catalogRouter);
-app.use(pokedexRouter);
 app.use(pricingRouter);
 app.use(catalogRouter);
 app.use(pokedexRouter);

@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+import { kindFromPath, optimizeImage } from './imageOptimize';
+
 
 const url = process.env.SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SECRET_KEY;
@@ -15,10 +17,24 @@ export async function uploadFallback(
   bytes: ArrayBuffer,
   contentType: string,
 ): Promise<void> {
+  const input = Buffer.from(bytes);
+
+  const kind = kindFromPath(path);
+  const optimized = await optimizeImage(input, kind, contentType);
+
   const { error } = await storageClient.storage
     .from(BUCKET)
-    .upload(path, bytes, { contentType, upsert: true });
-  if (error) throw new Error(`Storage upload failed for ${path}: ${error.message}`);
+    .upload(path, optimized.bytes, {
+      contentType: optimized.contentType,
+      upsert: true,
+      cacheControl: '31536000',
+    });
+
+  if (error) {
+    throw new Error(
+      `Storage upload failed for ${path}: ${error.message}`,
+    );
+  }
 }
 
 export async function deleteFallback(path: string): Promise<void> {

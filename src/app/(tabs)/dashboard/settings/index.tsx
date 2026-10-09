@@ -1,10 +1,12 @@
 import Button from '@/src/components/atoms/Button';
 import Screen from '@/src/components/layout/Screen';
 import AccountCard from '@/src/components/molecules/AccountCard';
+import { ActionDialog } from '@/src/components/molecules/ActionDialog';
 import ConfirmDialog from '@/src/components/molecules/ConfirmDialog';
 import OptionSheet, { OptionRow } from '@/src/components/molecules/OptionSheet';
 import ScreenHeader from '@/src/components/molecules/ScreenHeader';
 import SettingsRow from '@/src/components/molecules/SettingsRow';
+import { ToggleRow } from '@/src/components/molecules/ToggleRow';
 import { useAuth } from '@/src/context/AuthContext';
 import { useCurrency } from '@/src/hooks/useCurrency';
 import { CURRENCIES, ensureFx, setCurrency } from '@/src/lib/currency';
@@ -13,6 +15,7 @@ import { formatAgo, formatBytes } from '@/src/lib/format';
 import { imageCache } from '@/src/lib/imageCache';
 import { requestLogout } from '@/src/lib/logout';
 import { resetOnboarding } from '@/src/lib/onboarding';
+import { setPref, useDimUnownedCards, useDimUnownedPokemon } from '@/src/lib/preferences';
 import { refreshAll, summarize } from '@/src/lib/refresh';
 import { failedCount, pendingCount } from '@/src/lib/sync';
 import theme from '@/src/theme/theme';
@@ -39,6 +42,9 @@ export default function Settings() {
   const { code } = useCurrency();
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const currencyName = CURRENCIES.find((c) => c.code === code)?.name ?? code;
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const dimCards = useDimUnownedCards();
+  const dimPokemon = useDimUnownedPokemon();
 
   const loadStatus = useCallback(async () => {
     const [last, flag, p, f, c] = await Promise.all([
@@ -128,6 +134,8 @@ export default function Settings() {
             subtext={`${currencyName} (${code})`}
             onPress={() => setCurrencyOpen(true)}
           />
+          <ToggleRow icon="eye-off" label="Dim cards I don't own" subtext="Card lists show unowned cards faded" value={dimCards} onValueChange={(v) => setPref('dimUnownedCards', v)} />
+          <ToggleRow icon="eye-off" label="Dim Pokémon I haven't collected" subtext="Pokédex shows uncollected Pokémon faded" value={dimPokemon} onValueChange={(v) => setPref('dimUnownedPokemon', v)} />
           <SettingsRow icon="refresh-cw" label="Refresh cached data" subtext={refreshSub} onPress={refresh} busy={busy} showDivider />
           <SettingsRow
             icon="hard-drive"
@@ -136,13 +144,9 @@ export default function Settings() {
             onPress={() => setConfirmClear(true)}
             showDivider
           />
-          <SettingsRow icon="help-circle" label="Replay onboarding hint" onPress={replayHint} showDivider />
-          <SettingsRow
-            icon="info"
-            label="About"
-            subtext={`Version ${Constants.expoConfig?.version ?? '1.0.0'}\nCard data from TCGdex & Pokéwallet . Pokémon data and artwork from PokeAPI. Pokémon and Pokémon character names are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc.`}
-            showDivider
-          />
+          <SettingsRow icon="help-circle" label="Replay onboarding hint" onPress={async () => { await resetOnboarding(); router.back(); }} showDivider/>
+          <SettingsRow icon="heart" label="Credits" onPress={() => router.push('/(tabs)/dashboard/settings/credits')} showDivider/>
+          <SettingsRow icon="info" label="Version" subtext={Constants.expoConfig?.version ?? '1.0.0'} showDivider/>
         </View>
 
         <View style={styles.spacer} />
@@ -151,9 +155,21 @@ export default function Settings() {
           label="Log Out"
           icon="log-out"
           variant="outline"
-          onPress={() => requestLogout(logout, () => router.replace('/(auth)/welcome'))}
+          onPress={() => setConfirmLogout(true)}
         />
       </ScrollView>
+
+      <ActionDialog
+        visible={confirmLogout}
+        icon="log-out"
+        title="Log out of Ember?"
+        message="Any unsynced changes will be checked before you're signed out."
+        confirmLabel="Log Out"
+        cancelLabel="Cancel"
+        destructive
+        onCancel={() => setConfirmLogout(false)}
+        onConfirm={() => { setConfirmLogout(false); requestLogout(logout, () => router.replace('/(auth)/welcome')); }}
+      />
 
       <ConfirmDialog
         visible={confirmClear}

@@ -1,9 +1,5 @@
 import type { CardListItem } from '@/src/lib/api';
 
-export const DIM_UNOWNED_CARDS = false;
-// TODO (Settings group): read this from a saved user preference. 
-// // Until then every card renders undimmed, owned or not.
-
 export type SortKey = 'number' | 'name' | 'price' | 'illustrator';
 export type SortDir = 'asc' | 'desc';
 export type OwnershipFilter = 'all' | 'owned' | 'notOwned';

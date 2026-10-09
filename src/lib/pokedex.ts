@@ -4,10 +4,6 @@ import { getDb } from '@/src/lib/db';
 import { ensureInitialPull } from '@/src/lib/sync';
 import { currentUser } from '@/src/lib/userScope';
 
-export const DIM_UNOWNED_POKEMON = false;
-// TODO (Settings group): read this from a saved user preference.
-// Until then every Pokémon renders undimmed, owned or not.
-
 export type DexSortKey = 'number' | 'name';
 export const DEX_SORT_LABELS: Record<DexSortKey, string> = { number: 'Number', name: 'Name' };
 

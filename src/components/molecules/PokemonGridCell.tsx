@@ -1,6 +1,7 @@
 import Icon from '@/src/components/atoms/Icon';
 import PokemonImage from '@/src/components/atoms/PokemonImage';
-import { DIM_UNOWNED_POKEMON, formatDexNumber } from '@/src/lib/pokedex';
+import { formatDexNumber } from '@/src/lib/pokedex';
+import { useDimUnownedPokemon } from '@/src/lib/preferences';
 import theme from '@/src/theme/theme';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -15,6 +16,8 @@ type Props = {
 };
 
 function PokemonGridCell({ dexId, name, imageUri, owned, width, onPress }: Props) {
+  const dim = useDimUnownedPokemon();
+  
   return (
     <Pressable
       accessibilityRole="button"
@@ -23,7 +26,7 @@ function PokemonGridCell({ dexId, name, imageUri, owned, width, onPress }: Props
       style={[styles.cell, { width }]}
     >
       <View style={styles.art} accessible={false} importantForAccessibility="no-hide-descendants">
-        <View style={[styles.fill, DIM_UNOWNED_POKEMON && !owned && styles.dimmed]}>
+        <View style={[styles.fill, dim && !owned && styles.dimmed]}>
           <PokemonImage uri={imageUri} name={name} style={styles.fill} iconSize={20} />
         </View>
       </View>

@@ -1,6 +1,6 @@
 import CardImage from '@/src/components/atoms/CardImage';
 import Icon from '@/src/components/atoms/Icon';
-import { DIM_UNOWNED_CARDS } from '@/src/lib/cardList';
+import { useDimUnownedCards } from '@/src/lib/preferences';
 import theme from '@/src/theme/theme';
 import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -18,6 +18,7 @@ type Props = {
 
 function CardThumbnail({ id, name, imageUri, ownedCount, width, onPress, onAddPress, showBadge = true }: Props) {
   const owned = ownedCount > 0;
+  const dim = useDimUnownedCards();
 
   return (
     <View style={{ width }}>
@@ -26,7 +27,7 @@ function CardThumbnail({ id, name, imageUri, ownedCount, width, onPress, onAddPr
         accessibilityLabel={owned ? `${name}, owned ${ownedCount}` : `${name}, not owned`}
         onPress={() => onPress(id)}
       >
-        <View style={DIM_UNOWNED_CARDS && !owned ? styles.dimmed : undefined}>
+        <View style={dim && !owned ? styles.dimmed : undefined}>
           <CardImage uri={imageUri} name={name} />
         </View>
       </Pressable>

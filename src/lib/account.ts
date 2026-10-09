@@ -3,6 +3,7 @@ import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { wipeUserData } from '../lib/userScope';
 
 export class AccountError extends Error {
   constructor(message: string, public field?: string) { super(message); }
@@ -30,7 +31,7 @@ function toError(e: unknown, field?: string): AccountError {
   return new AccountError(err?.message ?? 'Something went wrong.', field);
 }
 
-async function reauth(password: string) {
+export async function reauth(password: string) {
   const { data } = await supabase.auth.getUser();
   const email = data.user?.email;
   if (!email) throw new AccountError('No account email found. Please log in again.');
@@ -166,4 +167,31 @@ export function useAccountInfo(): AccountInfo {
     canUnlinkGoogle: identities.length >= 2,
     refresh,
   };
+}
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL
+
+export async function deleteAccount(currentPassword?: string) {
+  if (currentPassword !== undefined) await reauth(currentPassword);
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new AccountError('Please log in again.');
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 45_000);
+  try {
+    const res = await fetch(`${API_URL}/account`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` }, signal: ctrl.signal });
+    if (res.status === 401) throw new AccountError('Please log in again.');
+    if (!res.ok) throw new AccountError('Could not delete your account. Please try again.');
+  } catch (e) {
+    if (e instanceof AccountError) throw e;
+    throw new AccountError("Can't reach the server. Check your connection and try again.");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function finishAccountDeletion() {
+  await wipeUserData();
+  await supabase.auth.signOut({ scope: 'local' });
 }

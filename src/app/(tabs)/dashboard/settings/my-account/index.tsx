@@ -60,6 +60,10 @@ export default function MyAccountScreen() {
             subtext={a.google ? `Linked${googleEmail ? ` · ${googleEmail}` : ''} — tap to unlink` : 'Not linked — tap to link'}
             onPress={onGooglePress}
           />
+          <SettingsRow 
+            icon="trash-2" label="Delete Account" subtext="Permanently remove your account and all data" 
+            onPress={() => router.push('/(tabs)/dashboard/settings/my-account/delete-account')} 
+          />
         </View>
       </ScrollView>
       <ActionDialog

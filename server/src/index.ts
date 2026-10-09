@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import express, { NextFunction, Request, Response } from 'express';
 import { requireAuth } from './auth';
 import { pool } from './db';
+import { accountRouter } from './routes/account';
 import { catalogRouter } from './routes/catalog';
 import { internalSyncRouter } from './routes/internalSync';
 import { pokedexRouter } from './routes/pokedex';
@@ -51,6 +52,7 @@ app.get('/health', async (_req, res) => {
 
 app.use(internalSyncRouter);
 app.use(requireAuth);
+app.use(accountRouter);
 app.use(pricingRouter);
 app.use(catalogRouter);
 app.use(pokedexRouter);

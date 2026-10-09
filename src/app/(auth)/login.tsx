@@ -55,11 +55,7 @@ export default function Login() {
 
           <Button label="Log In" variant="cta" onPress={handleLogin} loading={submitting} disabled={!email || !password} />
 
-          <Pressable
-            // TODO (My Account group): wire up real password reset via a
-            // Supabase deep link once the Change Password sub-screens exist.
-            // Intentionally a no-op for now.
-            onPress={() => {}}
+          <Pressable onPress={() => router.push('/(auth)/forgot-password')}
             style={styles.forgotPassword}
           >
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>

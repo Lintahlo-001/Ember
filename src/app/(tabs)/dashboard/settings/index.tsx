@@ -15,7 +15,7 @@ import { formatAgo, formatBytes } from '@/src/lib/format';
 import { imageCache } from '@/src/lib/imageCache';
 import { requestLogout } from '@/src/lib/logout';
 import { resetOnboarding } from '@/src/lib/onboarding';
-import { setPref, useDimUnownedCards, useDimUnownedPokemon } from '@/src/lib/preferences';
+import { setPref, useBadgePrefs, useDimUnownedCards, useDimUnownedPokemon } from '@/src/lib/preferences';
 import { refreshAll, summarize } from '@/src/lib/refresh';
 import { failedCount, pendingCount } from '@/src/lib/sync';
 import theme from '@/src/theme/theme';
@@ -136,6 +136,9 @@ export default function Settings() {
           />
           <ToggleRow icon="eye-off" label="Dim cards I don't own" subtext="Card lists show unowned cards faded" value={dimCards} onValueChange={(v) => setPref('dimUnownedCards', v)} />
           <ToggleRow icon="eye-off" label="Dim Pokémon I haven't collected" subtext="Pokédex shows uncollected Pokémon faded" value={dimPokemon} onValueChange={(v) => setPref('dimUnownedPokemon', v)} />
+          <ToggleRow icon="plus-circle" label="Quick add on cards" subtext="Show the + on cards you don't own" value={useBadgePrefs('cards').quickAdd} onValueChange={(v) => setPref('cardsQuickAdd', v)} />
+          <ToggleRow icon="check-circle" label="Owned badge on cards" subtext="Show a ✓ on cards you own" value={useBadgePrefs('cards').ownedBadge} onValueChange={(v) => setPref('cardsOwnedBadge', v)} />
+          <ToggleRow icon="check-circle" label="Owned badge in Pokédex" subtext="Show a ✓ on owned Pokémon" value={useBadgePrefs('pokedex').ownedBadge} onValueChange={(v) => setPref('pokedexOwnedBadge', v)} />
           <SettingsRow icon="refresh-cw" label="Refresh cached data" subtext={refreshSub} onPress={refresh} busy={busy} showDivider />
           <SettingsRow
             icon="hard-drive"

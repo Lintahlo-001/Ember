@@ -1,7 +1,7 @@
 import Icon from '@/src/components/atoms/Icon';
 import PokemonImage from '@/src/components/atoms/PokemonImage';
 import { formatDexNumber } from '@/src/lib/pokedex';
-import { useDimUnownedPokemon } from '@/src/lib/preferences';
+import { useBadgePrefs, useDimUnownedPokemon } from '@/src/lib/preferences';
 import theme from '@/src/theme/theme';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -17,6 +17,7 @@ type Props = {
 
 function PokemonGridCell({ dexId, name, imageUri, owned, width, onPress }: Props) {
   const dim = useDimUnownedPokemon();
+  const { ownedBadge } = useBadgePrefs('pokedex');
   
   return (
     <Pressable
@@ -31,7 +32,7 @@ function PokemonGridCell({ dexId, name, imageUri, owned, width, onPress }: Props
         </View>
       </View>
 
-      {owned ? (
+      {owned && ownedBadge ? (
         <View style={styles.badge}>
           <Icon name="check" size={14} color={theme.colors.surface} />
         </View>

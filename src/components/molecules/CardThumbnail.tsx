@@ -1,6 +1,6 @@
 import CardImage from '@/src/components/atoms/CardImage';
 import Icon from '@/src/components/atoms/Icon';
-import { useDimUnownedCards } from '@/src/lib/preferences';
+import { useBadgePrefs, useDimUnownedCards } from '@/src/lib/preferences';
 import theme from '@/src/theme/theme';
 import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -14,11 +14,15 @@ type Props = {
   onPress: (id: string) => void;
   onAddPress?: (id: string) => void;
   showBadge?: boolean;
+  scope?: 'cards' | 'pokedex';
 };
 
-function CardThumbnail({ id, name, imageUri, ownedCount, width, onPress, onAddPress, showBadge = true }: Props) {
+function CardThumbnail({ id, name, imageUri, ownedCount, width, onPress, onAddPress, showBadge = true, scope = 'cards' }: Props) {
   const owned = ownedCount > 0;
   const dim = useDimUnownedCards();
+  const { quickAdd, ownedBadge } = useBadgePrefs(scope ?? 'cards');
+  const showAdd = showBadge && quickAdd && !owned;
+  const showCheck = showBadge && ownedBadge && owned;
 
   return (
     <View style={{ width }}>

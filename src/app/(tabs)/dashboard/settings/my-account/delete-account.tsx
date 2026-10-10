@@ -9,7 +9,7 @@ export default function DeleteAccountScreen() {
 
   const fields: FormFieldDef[] = [
     ...(hasPassword ? [{ name: 'currentPassword', label: 'Current password', secure: true, autoComplete: 'current-password' as const }] : []),
-    { name: 'confirm', label: 'Type DELETE to confirm', autoCapitalize: 'characters' },
+    { name: 'confirm', label: 'Type delete to confirm', autoCapitalize: 'none' },
   ];
 
   return (
@@ -23,7 +23,7 @@ export default function DeleteAccountScreen() {
       validate={(v) => {
         const e: Record<string, string> = {};
         if (hasPassword && !v.currentPassword) e.currentPassword = 'Enter your current password.';
-        if ((v.confirm ?? '').trim() !== 'DELETE') e.confirm = 'Type DELETE exactly to continue.';
+        if ((v.confirm ?? '').trim().toLowerCase() !== 'delete') e.confirm = 'Type delete to continue.';
         return e;
       }}
       onSubmit={(v) => deleteAccount(hasPassword ? v.currentPassword : undefined)}

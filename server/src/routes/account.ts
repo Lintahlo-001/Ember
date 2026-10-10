@@ -9,7 +9,7 @@ const admin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SECRE
 export const accountRouter = Router();
 
 accountRouter.delete('/account', async (_req, res) => {
-  const userId = res.locals.userId as string | undefined;
+  const userId = (res.locals.user as { id?: string } | undefined)?.id;
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
   try {
     await pool.query('select public.purge_user_data($1)', [userId]);

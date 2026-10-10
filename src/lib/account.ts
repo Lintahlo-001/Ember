@@ -44,6 +44,7 @@ export async function changeUsername(username: string) {
   if (error) throw toError(error, 'username');
 }
 
+// currentPassword is omitted for Google-only accounts that have no password to verify.
 export async function changeEmail(newEmail: string, currentPassword?: string): Promise<boolean> {
   if (currentPassword !== undefined) await reauth(currentPassword);
   const { data, error } = await supabase.auth.updateUser(
@@ -167,13 +168,16 @@ export function useAccountInfo(): AccountInfo {
 
   const email = user?.email ?? '';
   const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
-  const hasEmailIdentity = identities.some((i) => i.provider === 'email');
+  // An email identity alone doesn't prove a password exists: when a Google-first user changes
+  // their email, Supabase adds an email identity without any password. app_metadata.provider is
+  // the provider the account was created with, so only email-first accounts have a password by default.
+  const signedUpWithEmail = (user?.app_metadata?.provider ?? '') === 'email';
   const google = identities.find((i) => i.provider === 'google') ?? null;
   return {
     loading,
     username: (meta.username as string) || (meta.full_name as string) || email.split('@')[0] || '',
     email,
-    hasPassword: hasEmailIdentity || meta.has_password === true,
+    hasPassword: signedUpWithEmail || meta.has_password === true,
     google,
     canUnlinkGoogle: identities.length >= 2,
     refresh,

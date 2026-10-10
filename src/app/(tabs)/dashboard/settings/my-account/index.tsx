@@ -55,9 +55,7 @@ export default function MyAccountScreen() {
         <AccountCard username={a.username} email={a.email} />
         <View style={{ gap: 8 }}>
           <SettingsRow icon="user" label="Change Username" onPress={() => router.push('/(tabs)/dashboard/settings/my-account/change-username')} />
-          {a.canChangeEmail && (
-            <SettingsRow icon="mail" label="Change Email" onPress={() => router.push('/(tabs)/dashboard/settings/my-account/change-email')} />
-          )}
+          <SettingsRow icon="mail" label="Change Email" onPress={() => router.push('/(tabs)/dashboard/settings/my-account/change-email')} />
           <SettingsRow
             icon="lock"
             label={a.hasPassword ? 'Change Password' : 'Set Password'}

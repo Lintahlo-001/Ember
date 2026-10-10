@@ -44,8 +44,8 @@ export async function changeUsername(username: string) {
   if (error) throw toError(error, 'username');
 }
 
-export async function changeEmail(newEmail: string, currentPassword: string): Promise<boolean> {
-  await reauth(currentPassword);
+export async function changeEmail(newEmail: string, currentPassword?: string): Promise<boolean> {
+  if (currentPassword !== undefined) await reauth(currentPassword);
   const { data, error } = await supabase.auth.updateUser(
     { email: newEmail.trim() },
     { emailRedirectTo: makeRedirectUri({ scheme: 'ember', path: 'login' }) },
@@ -138,7 +138,6 @@ export type AccountInfo = {
   username: string;
   email: string;
   hasPassword: boolean;
-  canChangeEmail: boolean;
   google: UserIdentity | null;
   canUnlinkGoogle: boolean;
   refresh: () => Promise<void>;
@@ -175,7 +174,6 @@ export function useAccountInfo(): AccountInfo {
     username: (meta.username as string) || (meta.full_name as string) || email.split('@')[0] || '',
     email,
     hasPassword: hasEmailIdentity || meta.has_password === true,
-    canChangeEmail: hasEmailIdentity, 
     google,
     canUnlinkGoogle: identities.length >= 2,
     refresh,

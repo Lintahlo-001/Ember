@@ -1,11 +1,16 @@
 import { AccountForm, type FormFieldDef } from '@/src/components/organisms/AccountForm';
 import { changePassword, setPassword, useAccountInfo, validators } from '@/src/lib/account';
 import { useRouter } from 'expo-router';
+import { useRef } from 'react';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
-  const { loading, hasPassword } = useAccountInfo();
+  const { loading, hasPassword: liveHasPassword } = useAccountInfo();
+  
+  const modeRef = useRef<boolean | null>(null);
   if (loading) return null;
+  if (modeRef.current === null) modeRef.current = liveHasPassword;
+  const hasPassword = modeRef.current;
 
   const fields: FormFieldDef[] = [
     ...(hasPassword ? [{ name: 'currentPassword', label: 'Current password', secure: true, autoComplete: 'current-password' as const }] : []),

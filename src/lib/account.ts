@@ -46,6 +46,7 @@ export async function changeUsername(username: string) {
   if (error) throw toError(error, 'username');
 }
 
+// currentPassword is omitted for Google-only accounts that have no password to verify.
 export async function changeEmail(newEmail: string, currentPassword?: string): Promise<boolean> {
   if (currentPassword !== undefined) await reauth(currentPassword);
   const { data, error } = await supabase.auth.updateUser(
@@ -58,6 +59,7 @@ export async function changeEmail(newEmail: string, currentPassword?: string): P
 
 export async function changePassword(currentPassword: string, newPassword: string) {
   await reauth(currentPassword);
+  // Supabase projects with "require current password" enabled reject the update unless it is sent along.
   const { error } = await supabase.auth.updateUser({ password: newPassword, current_password: currentPassword });
   if (error) throw toError(error, 'password');
 }
@@ -123,6 +125,9 @@ export async function linkGoogle() {
   return true;
 }
 
+// An email identity alone doesn't prove a password exists: when a Google-first user changes
+// their email, Supabase adds an email identity without any password. app_metadata.provider is
+// the provider the account was created with, so only email-first accounts have a password by default.
 function userHasPassword(user: User | null | undefined): boolean {
   const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
   return (user?.app_metadata?.provider ?? '') === 'email' || meta.has_password === true;
@@ -149,6 +154,7 @@ export type AccountInfo = {
   hasPassword: boolean;
   google: UserIdentity | null;
   canUnlinkGoogle: boolean;
+  identityCount: number;
   refresh: () => Promise<void>;
 };
 
@@ -185,6 +191,7 @@ export function useAccountInfo(): AccountInfo {
     hasPassword,
     google,
     canUnlinkGoogle: identities.length >= 2 && hasPassword,
+    identityCount: identities.length,
     refresh,
   };
 }
@@ -198,11 +205,14 @@ export async function deleteAccount(currentPassword?: string) {
   if (!token) throw new AccountError('Please log in again.');
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 45_000);
+  const timer = setTimeout(() => ctrl.abort(), 90_000);
   try {
     const res = await fetch(`${API_URL}/account`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` }, signal: ctrl.signal });
     if (res.status === 401) throw new AccountError('Please log in again.');
-    if (!res.ok) throw new AccountError('Could not delete your account. Please try again.');
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { detail?: string } | null;
+      throw new AccountError(`Could not delete your account (error ${res.status}${body?.detail ? `: ${body.detail}` : ''}). Please try again.`);
+    }
   } catch (e) {
     if (e instanceof AccountError) throw e;
     throw new AccountError("Can't reach the server. Check your connection and try again.");

@@ -18,6 +18,6 @@ accountRouter.delete('/account', async (_req, res) => {
     return res.status(204).end();
   } catch (e) {
     console.error('[account] delete failed', e);
-    return res.status(500).json({ error: 'Could not delete account' });
+    return res.status(500).json({ error: 'Could not delete account', detail: (e as { message?: string })?.message ?? String(e) });
   }
 });

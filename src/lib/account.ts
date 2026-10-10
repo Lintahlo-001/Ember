@@ -20,6 +20,8 @@ function toError(e: unknown, field?: string): AccountError {
   switch (err?.code) {
     case 'invalid_credentials': return new AccountError('Incorrect password.', 'currentPassword');
     case 'same_password': return new AccountError('Your new password must be different from the current one.', 'password');
+    case 'current_password_required': return new AccountError('Enter your current password.', 'currentPassword');
+    case 'current_password_mismatch': return new AccountError('Incorrect password.', 'currentPassword');
     case 'weak_password': return new AccountError('That password is too weak. Try a longer one.', 'password');
     case 'email_exists': return new AccountError('That email is already in use.', 'email');
     case 'over_request_rate_limit':
@@ -44,7 +46,6 @@ export async function changeUsername(username: string) {
   if (error) throw toError(error, 'username');
 }
 
-// currentPassword is omitted for Google-only accounts that have no password to verify.
 export async function changeEmail(newEmail: string, currentPassword?: string): Promise<boolean> {
   if (currentPassword !== undefined) await reauth(currentPassword);
   const { data, error } = await supabase.auth.updateUser(
@@ -57,7 +58,7 @@ export async function changeEmail(newEmail: string, currentPassword?: string): P
 
 export async function changePassword(currentPassword: string, newPassword: string) {
   await reauth(currentPassword);
-  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  const { error } = await supabase.auth.updateUser({ password: newPassword, current_password: currentPassword });
   if (error) throw toError(error, 'password');
 }
 

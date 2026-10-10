@@ -38,7 +38,6 @@ export default function CardGrid({ cards, owned, columns, onCardPress, onAddPres
       initialNumToRender={4}
       maxToRenderPerBatch={3}
       windowSize={7}
-      removeClippedSubviews
       ListHeaderComponent={header}
       ListEmptyComponent={<Text style={styles.empty}>{emptyText}</Text>}
       contentContainerStyle={{ paddingBottom: BOTTOM_CLEARANCE }}

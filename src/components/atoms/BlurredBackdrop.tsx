@@ -1,20 +1,23 @@
+import { useCachedImage } from '@/src/hooks/useCachedImage';
 import theme from '@/src/theme/theme';
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 export default function BlurredBackdrop({ uri }: { uri: string | null }) {
-  if (!uri) return null;
+  const img = useCachedImage(uri, 'card');
+  if (!img.uri) return null;
   const bg = theme.colors.bg;
-
   return (
-    <View
-      style={StyleSheet.absoluteFill}
-      pointerEvents="none"
-      accessible={false}
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Image source={{ uri }} style={styles.image} contentFit="cover" blurRadius={4} />
+    <View style={StyleSheet.absoluteFill} pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants">
+      <Image
+        source={{ uri: img.uri }}
+        style={styles.image}
+        contentFit="cover"
+        blurRadius={4}
+        recyclingKey={img.uri}
+        onError={img.onError}
+      />
       <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none">
         <Defs>
           <LinearGradient id="backdropFade" x1="0" y1="0" x2="0" y2="1">

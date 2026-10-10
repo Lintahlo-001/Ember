@@ -21,8 +21,8 @@ function CardThumbnail({ id, name, imageUri, ownedCount, width, onPress, onAddPr
   const owned = ownedCount > 0;
   const dim = useDimUnownedCards();
   const { quickAdd, ownedBadge } = useBadgePrefs(scope ?? 'cards');
-  const showAdd = showBadge && quickAdd && !owned;
-  const showCheck = showBadge && ownedBadge && owned;
+  const showAdd = showBadge && quickAdd && !owned && !!onAddPress;
+  const showCheck = showBadge && ownedBadge && owned && !!onAddPress;
 
   return (
     <View style={{ width }}>
@@ -36,15 +36,15 @@ function CardThumbnail({ id, name, imageUri, ownedCount, width, onPress, onAddPr
         </View>
       </Pressable>
 
-      {showBadge && onAddPress ? (
+      {showAdd || showCheck ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={owned ? `Add another copy of ${name}` : `Add ${name} to collection`}
-          onPress={() => onAddPress(id)}
+          onPress={() => onAddPress?.(id)}
           hitSlop={12}
           style={[styles.badge, owned ? styles.badgeOwned : styles.badgeAdd]}
         >
-          {owned ? (
+          {showCheck ? (
             <Icon name="check" size={14} color={theme.colors.surface} />
           ) : (
             <Icon name="plus" size={16} color={theme.colors.text} />

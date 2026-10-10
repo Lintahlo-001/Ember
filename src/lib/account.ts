@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import { wipeUserData } from '../lib/userScope';
 
 export class AccountError extends Error {
-  constructor(message: string, public field?: string) { super(message); }
+  constructor(message: string, public field?: string, public code?: string) { super(message); }
 }
 
 export const validators = {
@@ -87,7 +87,12 @@ function parseParams(url: string): Record<string, string> {
 
 export async function completeAuthFromUrl(url: string) {
   const p = parseParams(url);
-  if (p.error_description || p.error) throw new AccountError(p.error_description ?? p.error);
+  if (p.error_description || p.error) {
+  if (p.error_code === 'identity_already_exists' || /already linked/i.test(p.error_description ?? '')) {
+    throw new AccountError('That Google account is already registered.', undefined, 'identity_already_exists');
+  }
+    throw new AccountError(p.error_description ?? p.error);
+  }
   if (p.code) {
     const { error } = await supabase.auth.exchangeCodeForSession(p.code);
     if (error) throw error;
@@ -103,14 +108,16 @@ export async function completeAuthFromUrl(url: string) {
 }
 
 export async function linkGoogle() {
+  const redirectTo = makeRedirectUri({ scheme: 'ember', path: 'link-callback' });
   const { data, error } = await supabase.auth.linkIdentity({
     provider: 'google',
-    options: { redirectTo: makeRedirectUri(), skipBrowserRedirect: true },
+    options: { redirectTo, skipBrowserRedirect: true },
   });
   if (error || !data?.url) throw toError(error ?? new Error('Could not start Google linking.'));
-  const result = await WebBrowser.openAuthSessionAsync(data.url, makeRedirectUri());
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
   if (result.type !== 'success') return false; // user cancelled
-  try { await completeAuthFromUrl(result.url); } catch (e) { throw toError(e); }
+  try { await completeAuthFromUrl(result.url); }
+  catch (e) { throw e instanceof AccountError ? e : toError(e); }
   return true;
 }
 

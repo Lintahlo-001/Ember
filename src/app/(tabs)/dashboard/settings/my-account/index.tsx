@@ -19,7 +19,17 @@ export default function MyAccountScreen() {
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
     try { await fn(); await a.refresh(); }
-    catch (e) { setDlg({ title: 'Something went wrong', message: (e as Error).message }); }
+    catch (e) {
+      const err = e as { code?: string; message?: string };
+      setDlg(
+        err.code === 'identity_already_exists'
+          ? {
+              title: 'Google account already registered',
+              message: 'That Google account is already registered with another Ember account. Log in with it directly, or link a different Google account.',
+            }
+          : { title: 'Something went wrong', message: err.message ?? 'Please try again.' },
+      );
+    }
     finally { setBusy(false); }
   }
 

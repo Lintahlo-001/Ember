@@ -47,6 +47,7 @@ function RootLayoutNav() {
         <Stack.Screen name="modals/ownership-entry" options={{ presentation: 'transparentModal', animation: 'fade' }}/>
         <Stack.Screen name="modals/pricing-detail" options={{ presentation: 'transparentModal', animation: 'fade' }} />
         <Stack.Screen name="reset-password" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="link-callback" options={{ animation: 'none', gestureEnabled: false }} />
       </Stack>
     </>
   );

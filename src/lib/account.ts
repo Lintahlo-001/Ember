@@ -94,6 +94,9 @@ export async function completeAuthFromUrl(url: string) {
   } else if (p.access_token && p.refresh_token) {
     const { error } = await supabase.auth.setSession({ access_token: p.access_token, refresh_token: p.refresh_token });
     if (error) throw error;
+  } else if (p.token_hash && p.type === 'recovery') {
+  const { error } = await supabase.auth.verifyOtp({ token_hash: p.token_hash, type: 'recovery' });
+  if (error) throw error;
   } else {
     throw new AccountError('This link is invalid or has expired.');
   }

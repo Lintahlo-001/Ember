@@ -1,5 +1,6 @@
 import { AuthProvider, useAuth } from '@/src/context/AuthContext';
 import { imageCache } from '@/src/lib/imageCache';
+import '@/src/lib/recoveryLink';
 import { setIssueHandler } from '@/src/lib/sync';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';

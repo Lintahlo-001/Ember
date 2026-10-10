@@ -2,8 +2,8 @@ import Button from '@/src/components/atoms/Button';
 import Screen from '@/src/components/layout/Screen';
 import { AccountForm } from '@/src/components/organisms/AccountForm';
 import { completeAuthFromUrl, setPassword, validators } from '@/src/lib/account';
+import { clearRecoveryUrl, getRecoveryUrl, subscribeRecovery } from '@/src/lib/recoveryLink';
 import { theme } from '@/src/theme/theme';
-import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
@@ -13,20 +13,27 @@ type State = 'waiting' | 'ready' | 'invalid';
 export default function ResetPasswordScreen() {
   const router = useRouter();
   const [state, setState] = useState<State>('waiting');
+  const [reason, setReason] = useState<string | null>(null);
   const handled = useRef<string | null>(null);
 
   useEffect(() => {
     let alive = true;
     const handle = async (url: string | null) => {
-      if (!url || !url.includes('reset-password') || handled.current === url) return;
+      if (!url || handled.current === url) return;
       handled.current = url;
-      try { await completeAuthFromUrl(url); if (alive) setState('ready'); }
-      catch { if (alive) setState('invalid'); }
+      try {
+        await completeAuthFromUrl(url);
+        clearRecoveryUrl();
+        if (alive) setState('ready');
+      } catch (e) {
+        console.warn('Reset link failed:', url.split(/[?#]/)[0], (e as Error).message);
+        if (alive) { setReason((e as Error).message); setState('invalid'); }
+      }
     };
-    Linking.getInitialURL().then(handle);
-    const sub = Linking.addEventListener('url', (e) => handle(e.url));
-    const t = setTimeout(() => alive && setState((s) => (s === 'waiting' ? 'invalid' : s)), 5000);
-    return () => { alive = false; sub.remove(); clearTimeout(t); };
+    handle(getRecoveryUrl());
+    const unsub = subscribeRecovery(handle);
+    const t = setTimeout(() => alive && setState((s) => (s === 'waiting' ? 'invalid' : s)), 12000);
+    return () => { alive = false; unsub(); clearTimeout(t); };
   }, []);
 
   if (state === 'waiting') {
@@ -40,6 +47,7 @@ export default function ResetPasswordScreen() {
           <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 15, lineHeight: 22, color: theme.colors.text }}>
             This reset link is invalid or has already been used. Request a new one and open it on this device.
           </Text>
+          {reason ? <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: theme.colors.text }}>{reason}</Text> : null}
           <Button
             label="Request a new link"
             onPress={() => router.replace('/(auth)/forgot-password')}

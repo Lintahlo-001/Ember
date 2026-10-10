@@ -122,6 +122,11 @@ export async function linkGoogle() {
   return true;
 }
 
+function userHasPassword(user: User | null | undefined): boolean {
+  const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+  return (user?.app_metadata?.provider ?? '') === 'email' || meta.has_password === true;
+}
+
 export async function unlinkGoogle() {
   const { data, error } = await supabase.auth.getUserIdentities();
   if (error) throw toError(error);
@@ -129,6 +134,8 @@ export async function unlinkGoogle() {
   const google = identities.find((i) => i.provider === 'google');
   if (!google) return;
   if (identities.length < 2) throw new AccountError("Google is your only sign-in method, so it can't be unlinked.");
+  const { data: u } = await supabase.auth.getUser();
+  if (!userHasPassword(u.user)) throw new AccountError('Set a password before unlinking Google, or you could lose access to your account.');
   const { error: e2 } = await supabase.auth.unlinkIdentity(google);
   if (e2) throw toError(e2);
   await supabase.auth.refreshSession();
@@ -168,18 +175,15 @@ export function useAccountInfo(): AccountInfo {
 
   const email = user?.email ?? '';
   const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
-  // An email identity alone doesn't prove a password exists: when a Google-first user changes
-  // their email, Supabase adds an email identity without any password. app_metadata.provider is
-  // the provider the account was created with, so only email-first accounts have a password by default.
-  const signedUpWithEmail = (user?.app_metadata?.provider ?? '') === 'email';
+  const hasPassword = userHasPassword(user);
   const google = identities.find((i) => i.provider === 'google') ?? null;
   return {
     loading,
     username: (meta.username as string) || (meta.full_name as string) || email.split('@')[0] || '',
     email,
-    hasPassword: signedUpWithEmail || meta.has_password === true,
+    hasPassword,
     google,
-    canUnlinkGoogle: identities.length >= 2,
+    canUnlinkGoogle: identities.length >= 2 && hasPassword,
     refresh,
   };
 }

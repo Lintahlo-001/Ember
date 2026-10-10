@@ -37,7 +37,7 @@ export default function MyAccountScreen() {
     if (busy) return;
     if (!a.google) return void run(linkGoogle);
     if (!a.canUnlinkGoogle) {
-      return setDlg({ title: "Can't unlink Google", message: 'Google is the only way you sign in to this account. Create a password sign-in first, or keep Google linked.' });
+      return setDlg({ title: "Can't unlink Google", message: 'Google is the only way you can sign in to this account. Set a password first, then you can unlink Google.' });
     }
     setDlg({
       title: 'Unlink Google?',

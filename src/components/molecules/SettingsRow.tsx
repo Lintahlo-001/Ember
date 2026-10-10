@@ -10,16 +10,23 @@ type Props = {
   onPress?: () => void;
   busy?: boolean;
   showDivider?: boolean;
+  badge?: boolean;
+  destructive?: boolean;
 };
 
-export default function SettingsRow({ icon, label, subtext, onPress, busy, showDivider }: Props) {
+export default function SettingsRow({
+  icon, label, subtext, onPress, busy, showDivider, badge, destructive,
+}: Props) {
+  const tone = destructive ? theme.colors.accent : theme.colors.text;
+
   const body = (
     <>
-      <View accessible={false} importantForAccessibility="no-hide-descendants">
-        <Icon name={icon} size={22} color={theme.colors.text} />
+      <View style={styles.iconWrap} accessible={false} importantForAccessibility="no-hide-descendants">
+        <Icon name={icon} size={22} color={tone} />
+        {badge ? <View style={styles.dot} /> : null}
       </View>
       <View style={styles.text}>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, { color: tone }]}>{label}</Text>
         {subtext ? (
           <Text style={styles.subtext} accessibilityLiveRegion={busy ? 'polite' : 'none'}>
             {subtext}
@@ -30,13 +37,17 @@ export default function SettingsRow({ icon, label, subtext, onPress, busy, showD
         <ActivityIndicator color={theme.colors.accent} />
       ) : onPress ? (
         <View accessible={false} importantForAccessibility="no-hide-descendants">
-          <Icon name="chevron-right" size={22} color={theme.colors.text} />
+          <Icon name="chevron-right" size={22} color={tone} />
         </View>
       ) : null}
     </>
   );
 
-  const style = [styles.row, showDivider && styles.divider];
+  const style = [
+    styles.row,
+    showDivider && styles.divider,
+    showDivider && destructive && styles.dividerDanger,
+  ];
 
   if (!onPress) {
     return (
@@ -69,7 +80,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.space2,
   },
   divider: { borderTopWidth: 1.5, borderTopColor: theme.colors.text },
+  dividerDanger: { borderTopColor: theme.colors.accent },
+  iconWrap: { position: 'relative' },
+  dot: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: theme.colors.surface,
+    backgroundColor: theme.colors.accent,
+  },
   text: { flex: 1 },
-  label: { fontFamily: theme.fonts.bodyMedium, fontSize: theme.fontSizes.base, color: theme.colors.text },
+  label: { fontFamily: theme.fonts.bodyMedium, fontSize: theme.fontSizes.base },
   subtext: { fontFamily: theme.fonts.body, fontSize: theme.fontSizes.sm, color: theme.colors.text },
 });

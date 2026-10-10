@@ -2,10 +2,10 @@ import Button from '@/src/components/atoms/Button';
 import Screen from '@/src/components/layout/Screen';
 import AccountCard from '@/src/components/molecules/AccountCard';
 import { ActionDialog } from '@/src/components/molecules/ActionDialog';
-import ConfirmDialog from '@/src/components/molecules/ConfirmDialog';
 import OptionSheet, { OptionRow } from '@/src/components/molecules/OptionSheet';
 import ScreenHeader from '@/src/components/molecules/ScreenHeader';
 import SettingsRow from '@/src/components/molecules/SettingsRow';
+import TypeToConfirmDialog from '@/src/components/molecules/TypeToConfirmDialog';
 import { useAuth } from '@/src/context/AuthContext';
 import { useCurrency } from '@/src/hooks/useCurrency';
 import { CURRENCIES, ensureFx, setCurrency } from '@/src/lib/currency';
@@ -21,7 +21,7 @@ import theme from '@/src/theme/theme';
 import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function Settings() {
   const { session, logout } = useAuth();
@@ -158,7 +158,7 @@ export default function Settings() {
             onPress={() => router.push('/(tabs)/dashboard/settings/display')}
             showDivider
           />
-          <SettingsRow icon="refresh-cw" label="Refresh cached data" subtext={refreshSub} onPress={refresh} busy={busy} showDivider />
+          <SettingsRow icon="refresh-cw" label="Refresh cached data" subtext={refreshSub} onPress={refresh} busy={busy} badge={updateAvailable && !busy} showDivider />
           <SettingsRow
             icon="hard-drive"
             label="Clear image cache"
@@ -172,10 +172,26 @@ export default function Settings() {
         </View>
 
         <View style={styles.spacer} />
-          <SettingsRow icon="trash-2" label="Clear owned cards" subtext={clearBusy ? 'Working…' : 'Remove every card you marked as owned'} onPress={() => !clearBusy && setClearKind('owned')} showDivider/>
-          <SettingsRow icon="heart" label="Clear wishlist" subtext={clearBusy ? 'Working…' : 'Remove every wishlisted card'} onPress={() => !clearBusy && setClearKind('wishlist')} showDivider/>
-        <View style={styles.group}>
 
+        <Text style={styles.dangerTitle} accessibilityRole="header">
+          Danger Zone
+        </Text>
+        <View style={[styles.group, styles.dangerGroup]}>
+          <SettingsRow
+            destructive
+            icon="trash-2"
+            label="Clear owned cards"
+            subtext={clearBusy ? 'Working…' : 'Remove every card you marked as owned'}
+            onPress={() => !clearBusy && setClearKind('owned')}
+          />
+          <SettingsRow
+            destructive
+            icon="heart"
+            label="Clear wishlist"
+            subtext={clearBusy ? 'Working…' : 'Remove every wishlisted card'}
+            onPress={() => !clearBusy && setClearKind('wishlist')}
+            showDivider
+          />
         </View>
 
         <Button
@@ -198,30 +214,19 @@ export default function Settings() {
         onConfirm={() => { setConfirmLogout(false); requestLogout(logout, () => router.replace('/(auth)/welcome')); }}
       />
 
-      <ActionDialog
+      <TypeToConfirmDialog
         visible={!!clearKind}
-        icon="trash-2"
-        destructive
+        icon={clearKind === 'owned' ? 'trash-2' : 'heart'}
         title={clearKind === 'owned' ? 'Clear all owned cards?' : 'Clear your wishlist?'}
         message={clearKind === 'owned'
           ? "This permanently removes every owned entry from your account on all your devices. Your wishlist isn't affected. This can't be undone."
           : "This permanently removes every wishlisted card from your account on all your devices. Your owned cards aren't affected. This can't be undone."}
-        confirmLabel={clearKind === 'owned' ? 'Clear owned cards' : 'Clear wishlist'}
-        cancelLabel="Cancel"
+        phrase={clearKind === 'owned' ? 'clear cards' : 'clear wishlist'}
+        confirmLabel="Clear"
         onCancel={() => setClearKind(null)}
         onConfirm={doClear}
       />
-      <ActionDialog visible={!!notice} title={notice?.title ?? ''} message={notice?.message} confirmLabel="OK" onConfirm={() => setNotice(null)} />
-
-      <ConfirmDialog
-        visible={confirmClear}
-        title="Clear image cache?"
-        message="Downloaded images are removed from this device. They download again the next time you open the app."
-        confirmLabel="Clear"
-        loading={clearing}
-        onConfirm={clearImages}
-        onCancel={() => setConfirmClear(false)}
-      />
+      
       <OptionSheet visible={currencyOpen} title="Currency" onClose={() => setCurrencyOpen(false)}>
         {CURRENCIES.map((c) => (
           <OptionRow
@@ -249,5 +254,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     overflow: 'hidden',
   },
-  spacer: { flex: 1, minHeight: theme.spacing.space3 },
+  spacer: { flex: 1, minHeight: theme.spacing.space1 },
+  dangerTitle: { fontFamily: theme.fonts.header, fontSize: theme.fontSizes.base, color: theme.colors.accent },
+  dangerGroup: { borderColor: theme.colors.accent },
 });

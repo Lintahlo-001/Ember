@@ -219,6 +219,69 @@ This project was built with AI assistance. This file is the record of it.
   Each one takes its data from the screen using it, which means the same piece
   can be reused anywhere.
 
+#### Express + Postgres connection
+
+- **Files:** `server/src/db.ts`, `server/src/index.ts` (the `/health` route only), `server/.env.example`
+- **Commit:** [cb1f309](https://github.com/Lintahlo-001/Ember/commit/cb1f30910c12a4e989585ea2cb937b46c16d71ee), [e407de8](https://github.com/Lintahlo-001/Ember/commit/e407de85dd1db53ba4591477fc7c479c6e174ebc)
+- **What it does and why it is built this way:**
+  - `db.ts` loads the `.env` file, stops the server with a clear error if
+    `DATABASE_URL` is missing, and creates one shared connection pool that every
+    route reuses. This is faster than opening a new connection on each request.
+    The `ssl` setting is there because Supabase's pooler requires an encrypted
+    connection.
+  - `/health` runs `SELECT NOW()` and returns `ok` plus the database time. If
+    the query fails, it logs the real error on the server and sends back only a
+    generic "Database unreachable" message, so no connection details leak. It's
+    public on purpose: Render and my cron-job.org ping both use it to check the
+    server is awake.
+  - `.env.example` lists every variable the server needs, with placeholder
+    values only, so anyone cloning the repo knows what to fill in without seeing
+    my real keys.
+
+#### TCGdex API client
+
+- **File:** `server/src/tcgdex.ts`
+- **Commit:** [c8803f6](https://github.com/Lintahlo-001/Ember/commit/c8803f65de88263c58d48205a3869b1241f4183f)
+- **What it does and why it is built this way:** This is the only file that
+  talks to TCGdex. One small `get` helper adds a 15-second timeout, turns a 404
+  into a named `TcgdexNotFound` error, and throws on any other failure. The three
+  public functions (`listSets`, `getSet`, `getCard`) are one-liners on top of it.
+  `isUsableTcgdexAsset` treats any image URL containing `/univ/` as unusable,
+  because I confirmed with curl that those URLs don't return a real image. Having
+  one file means a change to the TCGdex address or error handling happens in one
+  place. `EXCLUDED_SERIES` lists the series I don't want in the catalog (TCG
+  Pocket, `tcgp`).
+
+#### Database tables for the catalog, wishlist and favorites
+
+- **Files:** `server/sql/001_catalog_schema.sql`, `005_wishlist.sql`, `006_favorites.sql`
+- **Commit:** [b5b9d7d](https://github.com/Lintahlo-001/Ember/commit/b5b9d7d536f426872896b16d77cf8df6b2b70642), [5c1d945](https://github.com/Lintahlo-001/Ember/commit/5c1d9450d5b6a19863dffd7263f333b333904535), [ce0b97b](https://github.com/Lintahlo-001/Ember/commit/ce0b97ba3e71876fe0c251e1f47c828abb2b1ad0)
+- **What they do and why they are built this way:**
+  - `001` creates the `sets` and `cards` tables in a separate `catalog` schema,
+    so Supabase's public API can't see them. Row Level Security is on with no
+    policies, which locks the tables to everyone except my own server. Indexes
+    are on the columns I search by (set, illustrator, Pokémon number).
+  - `005` and `006` are the same pattern for the wishlist and favorite sets: one
+    row per user per card or set, with the pair as the primary key so duplicates
+    are impossible. Each user can only read, add and delete their own rows. I
+    deliberately gave no update permission, since a wishlist entry either exists
+    or it doesn't.
+
+#### Simple one-off scripts
+
+- **Files:** `server/src/jobs/backfillDetails.ts`, `syncAll.ts`, `purgeEmptySets.ts`
+- **Commit:** [3ea146c](https://github.com/Lintahlo-001/Ember/commit/3ea146c4a3dfa33eb1dddbfcb4bbe3d7f3dd4b2c), [b77c667](https://github.com/Lintahlo-001/Ember/commit/b77c6678dedd6c2548b3e8c05ef87ba09f0a93ef), [c8803f6](https://github.com/Lintahlo-001/Ember/commit/c8803f65de88263c58d48205a3869b1241f4183f)
+- **What they do and why they are built this way:**
+  - `backfillDetails.ts` and `syncAll.ts` are thin wrappers. Each one calls a
+    function that lives elsewhere, prints how long it took or the summary, and
+    always closes the database connection at the end so the script exits instead
+    of hanging.
+  - `purgeEmptySets.ts` finds sets that have zero cards and deletes them along
+    with their stored image files. It has a `--dry-run` option that only lists
+    what would be deleted, so I can check before removing anything. Files are
+    deleted before database rows, so if the script crashes halfway I can re-run
+    it safely.
+
 ### The AI-written part I understand best
 
 - **File:** `server/src/auth.ts`

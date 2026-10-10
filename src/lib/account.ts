@@ -46,7 +46,10 @@ export async function changeUsername(username: string) {
 
 export async function changeEmail(newEmail: string, currentPassword: string): Promise<boolean> {
   await reauth(currentPassword);
-  const { data, error } = await supabase.auth.updateUser({ email: newEmail.trim() });
+  const { data, error } = await supabase.auth.updateUser(
+    { email: newEmail.trim() },
+    { emailRedirectTo: makeRedirectUri({ scheme: 'ember', path: 'login' }) },
+  );
   if (error) throw toError(error, 'email');
   return !!data.user?.new_email;
 }

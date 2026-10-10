@@ -1,8 +1,11 @@
 import { AccountForm } from '@/src/components/organisms/AccountForm';
+import { useAuth } from '@/src/context/AuthContext';
 import { changeEmail, validators } from '@/src/lib/account';
+import { requestLogout } from '@/src/lib/logout';
 import { useRouter } from 'expo-router';
 
 export default function ChangeEmailScreen() {
+  const { logout } = useAuth();
   const router = useRouter();
   return (
     <AccountForm
@@ -22,9 +25,11 @@ export default function ChangeEmailScreen() {
       }}
       onSubmit={async (v) => {
         const pending = await changeEmail(v.email, v.currentPassword);
-        if (pending) return `We sent a confirmation link to ${v.email.trim()}. Your email changes once you open it.`;
+        return pending
+          ? `We sent a confirmation link to ${v.email}. You'll be logged out now. Confirm the link, then sign in with your new email.`
+          : 'Email updated.';
       }}
-      onDone={() => router.back()}
+      onDone={() => requestLogout(logout, () => router.replace('/(auth)/welcome'))}
     />
   );
 }

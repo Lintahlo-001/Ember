@@ -46,7 +46,6 @@ export async function changeUsername(username: string) {
   if (error) throw toError(error, 'username');
 }
 
-// currentPassword is omitted for Google-only accounts that have no password to verify.
 export async function changeEmail(newEmail: string, currentPassword?: string): Promise<boolean> {
   if (currentPassword !== undefined) await reauth(currentPassword);
   const { data, error } = await supabase.auth.updateUser(
@@ -59,7 +58,6 @@ export async function changeEmail(newEmail: string, currentPassword?: string): P
 
 export async function changePassword(currentPassword: string, newPassword: string) {
   await reauth(currentPassword);
-  // Supabase projects with "require current password" enabled reject the update unless it is sent along.
   const { error } = await supabase.auth.updateUser({ password: newPassword, current_password: currentPassword });
   if (error) throw toError(error, 'password');
 }
@@ -125,23 +123,46 @@ export async function linkGoogle() {
   return true;
 }
 
-// An email identity alone doesn't prove a password exists: when a Google-first user changes
-// their email, Supabase adds an email identity without any password. app_metadata.provider is
-// the provider the account was created with, so only email-first accounts have a password by default.
 function userHasPassword(user: User | null | undefined): boolean {
   const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
   return (user?.app_metadata?.provider ?? '') === 'email' || meta.has_password === true;
 }
 
-export async function unlinkGoogle() {
+const API_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, '');
+
+export async function ensureEmailLogin() {
+  if (!API_URL) throw new AccountError('EXPO_PUBLIC_API_URL is not set. Check your .env file.');
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new AccountError('Please log in again.');
+  let res: Response;
+  try { res = await fetch(`${API_URL}/account/email-login`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); }
+  catch { throw new AccountError("Can't reach the server. Check your connection and try again."); }
+  if (res.status === 401) throw new AccountError('Please log in again.');
+  if (res.status === 409) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new AccountError(body?.error === 'no_password' ? 'Set a password before unlinking Google.' : 'Confirm your email address before unlinking Google.');
+  }
+  if (!res.ok) throw new AccountError(`Could not prepare email sign-in (error ${res.status}). Please try again.`);
+}
+
+async function fetchIdentities(): Promise<UserIdentity[]> {
   const { data, error } = await supabase.auth.getUserIdentities();
   if (error) throw toError(error);
-  const identities = data.identities ?? [];
-  const google = identities.find((i) => i.provider === 'google');
-  if (!google) return;
-  if (identities.length < 2) throw new AccountError("Google is your only sign-in method, so it can't be unlinked.");
+  return data?.identities ?? [];
+}
+
+export async function unlinkGoogle() {
   const { data: u } = await supabase.auth.getUser();
   if (!userHasPassword(u.user)) throw new AccountError('Set a password before unlinking Google, or you could lose access to your account.');
+  let identities = await fetchIdentities();
+  const google = identities.find((i) => i.provider === 'google');
+  if (!google) return;
+  if (!identities.some((i) => i.provider === 'email')) {
+    await ensureEmailLogin();
+    identities = await fetchIdentities();
+  }
+  if (identities.length < 2) throw new AccountError("Google is your only sign-in method, so it can't be unlinked.");
   const { error: e2 } = await supabase.auth.unlinkIdentity(google);
   if (e2) throw toError(e2);
   await supabase.auth.refreshSession();
@@ -190,16 +211,15 @@ export function useAccountInfo(): AccountInfo {
     email,
     hasPassword,
     google,
-    canUnlinkGoogle: identities.length >= 2 && hasPassword,
+    canUnlinkGoogle: hasPassword,
     identityCount: identities.length,
     refresh,
   };
 }
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL
-
 export async function deleteAccount(currentPassword?: string) {
   if (currentPassword !== undefined) await reauth(currentPassword);
+  if (!API_URL) throw new AccountError('EXPO_PUBLIC_API_URL is not set. Check your .env file.');
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new AccountError('Please log in again.');
@@ -211,7 +231,7 @@ export async function deleteAccount(currentPassword?: string) {
     if (res.status === 401) throw new AccountError('Please log in again.');
     if (!res.ok) {
       const body = (await res.json().catch(() => null)) as { detail?: string } | null;
-      throw new AccountError(`Could not delete your account (error ${res.status}${body?.detail ? `: ${body.detail}` : ''}). Please try again.`);
+      throw new AccountError(`Could not delete your account (error ${res.status} from ${API_URL}${body?.detail ? `: ${body.detail}` : ''}). Please try again.`);
     }
   } catch (e) {
     if (e instanceof AccountError) throw e;

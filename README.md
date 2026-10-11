@@ -14,7 +14,7 @@
 Search any card, log exactly what you own (quantity, condition, variant, notes), keep a wishlist, browse every set and the whole Pokédex, and watch your completion progress and collection value grow. It keeps working offline and syncs your changes when you reconnect.
 
 <p align="center">
-  <img src="assets/readme/demo.gif" alt="Browsing sets and adding a card to the collection" width="280">
+  <img src="assets/readme/demo.gif" alt="Browsing sets and adding a card to the collection" width="250">
 </p>
 <p align="center"><em>Browsing a set and adding a card to the collection.</em></p>
 
@@ -604,12 +604,6 @@ flowchart LR
 ---
 
 ## Screenshots
-
-### Overview
-
-<p align="center">
-  <img src="assets/readme/demo.gif" alt="Demo: browsing and adding a card" width="280">
-</p>
 
 ### Authentication
 

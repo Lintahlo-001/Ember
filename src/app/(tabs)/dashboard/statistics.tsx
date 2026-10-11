@@ -1,4 +1,3 @@
-import LogoImage from '@/src/components/atoms/LogoImage';
 import PokeballIcon from '@/src/components/atoms/icons/PokeballIcon';
 import Screen from '@/src/components/layout/Screen';
 import ProgressRow from '@/src/components/molecules/ProgressRow';
@@ -6,6 +5,7 @@ import RankedCardRow from '@/src/components/molecules/RankedCardRow';
 import ScreenHeader from '@/src/components/molecules/ScreenHeader';
 import StatusView from '@/src/components/molecules/StatusView';
 import SeriesGroup from '@/src/components/organisms/SeriesGroup';
+import SeriesProgressList from '@/src/components/organisms/SeriesProgressList';
 import { useAllOwned } from '@/src/hooks/useAllOwned';
 import { useCollapsed } from '@/src/hooks/useCollapsed';
 import { useCurrency } from '@/src/hooks/useCurrency';
@@ -15,7 +15,7 @@ import { groupBySerie, ownedPerSet } from '@/src/lib/series';
 import { topValuable, totalUniqueCards } from '@/src/lib/stats';
 import theme from '@/src/theme/theme';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function Statistics() {
@@ -31,8 +31,11 @@ export default function Statistics() {
   const groups = useMemo(() => (data ? groupBySerie(data.sets) : []), [data]);
   const ownedBySet = useMemo(() => (data ? ownedPerSet(data.owned, data.sets) : new Map<string, number>()), [data]);
 
-  const openSet = (setId: string) =>
-    router.push({ pathname: '/(tabs)/dashboard/set-breakdown/[setId]', params: { setId } });
+  const openSet = useCallback(
+    (setId: string) =>
+      router.push({ pathname: '/(tabs)/dashboard/set-breakdown/[setId]', params: { setId } }),
+    [],
+  );
 
   const failure = ownedError ?? error;
   const retry = () => {
@@ -94,29 +97,16 @@ export default function Statistics() {
             <Text style={styles.section} accessibilityRole="header">
               Series Progress
             </Text>
-            {groups.map((g) => (
-              <SeriesGroup
-                key={g.name}
-                name={g.name}
-                collapsed={isCollapsed(g.name)}
-                onToggle={() => toggle(g.name)}
-              >
-                <View style={styles.sets}>
-                  {g.sets.map((s) => (
-                    <ProgressRow
-                      key={s.id}
-                      title={s.name}
-                      leading={
-                        <LogoImage uri={s.logo_url} label={`${s.name} logo`} style={styles.logo} iconSize={20} />
-                      }
-                      progress={{ owned: ownedBySet.get(s.id) ?? 0, total: s.card_count_total }}
-                      onPress={() => openSet(s.id)}
-                      accessibilityHint="Opens the rarity breakdown"
-                    />
-                  ))}
-                </View>
-              </SeriesGroup>
-            ))}
+              {groups.map((g) => (
+                <SeriesGroup
+                  key={g.name}
+                  name={g.name}
+                  collapsed={isCollapsed(g.name)}
+                  onToggle={() => toggle(g.name)}
+                >
+                  <SeriesProgressList sets={g.sets} ownedBySet={ownedBySet} onOpenSet={openSet} />
+                </SeriesGroup>
+              ))}
           </ScrollView>
         ) : null}
       </StatusView>
@@ -136,6 +126,4 @@ const styles = StyleSheet.create({
   },
   divider: { borderTopWidth: 1.5, borderTopColor: theme.colors.text },
   empty: { fontFamily: theme.fonts.body, fontSize: theme.fontSizes.base, color: theme.colors.text },
-  sets: { gap: theme.spacing.space1 },
-  logo: { width: 36, height: 28 },
 });

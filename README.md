@@ -123,9 +123,19 @@ The app itself relies on these native modules for offline support:
 | `expo-sqlite` | The on-device database (catalog cache, your collection, the outbox). It is also registered as a plugin in `app.json`. |
 | `expo-file-system` | The on-device image cache. |
 | `@react-native-community/netinfo` | Detects reconnects so queued changes sync automatically. |
-| `@react-native-async-storage/async-storage` | Stores the Supabase session, small UI preferences and the onboarding flag. |
+| `@react-native-async-storage/async-storage` | Stores the Supabase session, small UI preferences, which series are collapsed, and the onboarding flag. |
 
-All four ship inside Expo Go, so you don't need to do anything extra. If you ever remove and re-add them, use `npx expo install expo-sqlite expo-file-system @react-native-community/netinfo @react-native-async-storage/async-storage` so Expo picks versions that match SDK 57. In a custom development build they need a rebuild whenever they are added.
+A few more native modules power the interface and account links:
+
+| Module | What it is used for |
+| --- | --- |
+| `expo-image` | Renders card, logo and Pokémon images with memory/disk caching and fade-in. |
+| `expo-blur` | The translucent floating tab bar. |
+| `react-native-reanimated` (+ `react-native-worklets`) | Tab-bar slide, collapsing series, toggles, and the animated Welcome screen. |
+| `react-native-svg` | Custom icons (Pokéball, Pokédex, grid, heart, star), the Welcome flames and wave, and the Card Detail backdrop fade. |
+| `expo-linking`, `expo-web-browser`, `expo-auth-session` | Google sign-in and the `ember://` links used by password reset and account linking. |
+
+All of these ship inside Expo Go, so you don't need to do anything extra. If you ever remove and re-add them, use `npx expo install expo-sqlite expo-file-system @react-native-community/netinfo @react-native-async-storage/async-storage` (and the same for any module above) so Expo picks versions that match SDK 57. In a custom development build they need a rebuild whenever they are added.
 
 #### B3. Create the Supabase project
 
@@ -209,11 +219,11 @@ Email and password works without this section. **Continue with Google** (and lin
 1. **Google Cloud Console → APIs & Services → OAuth consent screen.** Create the consent screen and set the **App name** to `Ember`. Otherwise Google shows your raw project ID to users.
 2. **Credentials → Create credentials → OAuth client ID.** Choose **Web application**. Under **Authorized redirect URIs** add Supabase's callback URL: `https://<your-project-ref>.supabase.co/auth/v1/callback`. Copy the **Client ID** and **Client secret**.
 3. **Supabase → Authentication → Sign In / Providers → Google.** Enable it and paste the Client ID and Client secret.
-4. **Supabase → Authentication → URL Configuration → Additional Redirect URLs.** Add `ember://` (the app's URL scheme), `ember://login` (for confirming email change), `ember://reset-password` (the **Forgot Password** email link opens this screen), and `ember://link-callback` (handles redirect if user tries to link already registered google accounts).
+4. **Supabase → Authentication → URL Configuration → Additional Redirect URLs.** Add `ember://` (the app's URL scheme), `ember://login` (for confirming email change), `ember://reset-password` (the **Forgot Password** email link opens this screen), and `ember://link-callback` (handles the redirect if a user tries to link an already registered Google account).
 5. `app.json` already declares `"scheme": "ember"`, so no change is needed.
 6. The sign-in code (`signInWithOAuth` plus `WebBrowser.openAuthSessionAsync`) is already wired up in `src/context/AuthContext.tsx`, and linking lives in `src/lib/account.ts`.
 
-> Step 4's second and third URL are needed even if you skip Google, because password-reset and email change confirmation links use it. Like Google sign-in, reset and confirmation links need a development build or the APK, since Expo Go can't receive the `ember://` scheme.
+> Step 4's second and third URL are needed even if you skip Google, because password-reset and email change confirmation links use them. Like Google sign-in, reset and confirmation links need a development build or the APK, since Expo Go can't receive the `ember://` scheme.
 
 #### B6. Deploy the API to Render (optional for local-only use)
 
@@ -296,9 +306,11 @@ Two [cron-job.org](https://cron-job.org) jobs keep the backend fresh and awake. 
 
 ```ts
 app.use(internalSyncRouter);   // secret-protected, sits above requireAuth
-app.use(requireAuth);
+app.use(requireAuth);          // everything below needs a verified Supabase token
 app.use(accountRouter);
+app.use(pricingRouter);
 app.use(catalogRouter);
+app.use(pokedexRouter);
 ```
 
 1. **Generate a secret** (see B4) and store it as `CRON_SECRET` in three places: the Render dashboard (**Environment**), `render.yaml` (`- key: CRON_SECRET`, `sync: false`), and `server/.env.example` (as `CRON_SECRET=generate-a-long-random-string`). The route stays **disabled** (it always returns 401) unless the secret is at least 24 characters long.
@@ -337,7 +349,7 @@ cd server
 npm run dev
 ```
 
-Confirm it's up at `http://localhost:3000/health`. It should return `{"status":"ok","dbTime":"..."}` once it can reach Postgres through the pooler.
+Confirm it's up at `http://localhost:3000/health`. It should return `{"status":"ok","dbTime":"..."}` once it can reach Postgres through the pooler. On start-up the server also warms its in-memory search-suggestion index in the background.
 
 **2. Start the app with Expo Go**
 
@@ -400,28 +412,30 @@ Typical order for a brand-new database: `seed:species` → `sync` → `backfill`
 
 ### Features for users
 
-- **Accounts:** sign up and log in with email and password, or continue with Google. **Forgot Password** emails a reset link that opens a Set New Password screen in the app.
+- **Accounts:** an animated Welcome screen leads to Log In or Sign Up. Sign up and log in with email and password, or continue with Google. **Forgot Password** emails a reset link that opens a Set New Password screen in the app.
 - **Onboarding hint:** the first time you open the Dashboard, a short three-step walkthrough shows how to find a card, mark it as owned and watch progress grow. Replay it any time from Settings.
-- **Dashboard:** a searchable list of every card set, grouped by series (Mega Evolution, Scarlet & Violet, and so on). Each set shows owned/total and percent complete. Series collapse and expand, and your favorited sets are pinned in a Favorites group at the top.
-- **Card search:** type a card name and get live suggestions for card names and artists. Submitting opens Search Results, where you can sort, filter and change the grid density.
+- **Dashboard:** a searchable list of every card set, grouped by series (Mega Evolution, Scarlet & Violet, and so on). Main series are listed newest first, followed by Miscellaneous, POP, Trainer Kits and McDonald's Collection, with anything unclassified under Other. Each set shows owned/total and percent complete. Series collapse and expand (remembered per device), and your favorited sets are pinned in a Favorites group at the top. Typing in the set filter shows matches even inside collapsed series.
+- **Card search:** type a card name and get live suggestions for card names and artists. Submitting opens Search Results, where you can sort, filter and change the grid density. Picking an artist (or tapping the artist pill on a card) filters by that illustrator, shown as a removable chip.
 - **Set Detail:** set logo, release date, estimated value, progress bar and a full card grid. Tap the star to favorite a set, or tap the header box to open the set's rarity breakdown.
-- **Card Detail:** large card art (tap to zoom), the Pokémon on the card, the artist, a price pill, a wishlist heart and a **Your Collection** section.
-- **Collection tracking:** a card can have several entries, each with its own quantity, condition (Near Mint to Damaged), variant (Normal, Reverse Holo, Holo, and so on) and optional notes. Adding the same variant and condition again merges the quantities. At quantity 1 the minus button becomes a delete button.
+- **Card Detail:** large card art over a soft blurred backdrop (tap to zoom), the Pokémon on the card, the artist, a price pill, a wishlist heart and a **Your Collection** section.
+- **Collection tracking:** a card can have several entries, each with its own quantity, condition (Near Mint to Damaged), variant (Normal, Reverse Holo, Holo, and so on) and optional notes. Adding the same variant and condition again merges the quantities. At quantity 1 the minus button becomes a delete button, and editing an entry also offers **Delete entry**.
 - **Pricing:** market price on every card, plus a Pricing Details sheet with TCGplayer and Cardmarket tabs and Market / Low / Mid / High per variant. Prices are shown in your chosen currency (PHP, USD, CAD, EUR, GBP, AUD, CNY, JPY or KRW).
-- **My Cards:** everything you own, grouped by series and set, with Total Cards and Estimated Value, search, sort, filter and a 3 / 4 / 5 column switcher.
+- **My Cards:** everything you own, grouped by series and set (both collapsible), with Total Cards and Estimated Value, search, sort, filter and a 3 / 4 / 5 column switcher.
 - **Wishlist:** tap the heart on any card. The tab shows how many cards you are hunting for.
-- **Pokédex:** all Pokémon with National or regional views (Kanto to Paldea), search by name or number, owned/total progress, and a Pokémon Detail page listing every card ever printed of that Pokémon.
-- **Statistics:** Unique Cards and Pokémon progress bars, your Top 5 Most Valuable cards (in your display currency) and Series Progress. Tapping a set opens **Set Breakdown**, which shows owned/total and a progress bar for each rarity, with rarity icons where you have uploaded them.
-- **Sort and filter everywhere:** sort by number, name, price or illustrator. Filter by ownership (All / Owned / Not Owned) and by one or more rarities.
-- **Display preferences:** all stored on the device, in Settings.
+- **Pokédex:** all Pokémon with National or regional views (Kanto to Paldea), a Number / Name sort, search by name or number, owned/total progress, and a Pokémon Detail page with a summary card (artwork, description, progress) listing every card ever printed of that Pokémon.
+- **Statistics:** Unique Cards and Pokémon progress bars, your Top 5 Most Valuable cards (in your display currency) and a collapsible Series Progress list. Tapping a set opens **Set Breakdown**, which shows owned/total and a progress bar for each rarity, with rarity icons where you have uploaded them.
+- **Sort and filter everywhere:** sort by number, name, price or illustrator. Filter by ownership (All / Owned / Not Owned) and by one or more rarities, which are listed from most common to rarest rather than alphabetically. Sort and filter changes apply when you tap **Done**.
+- **Android-friendly navigation:** a floating, translucent tab bar (Wishlist, Home, Pokédex). Tapping the active tab scrolls its list back to the top. The hardware back button exits from Home, returns to Home from Wishlist and Pokédex, and otherwise goes back one screen.
+- **Display preferences:** all stored on the device, in Settings → Display.
   - *Dim cards I don't own* and *Dim Pokémon I haven't collected* fade unowned items in lists and the Pokédex.
   - *Quick add on cards* shows or hides the **+** on cards you don't own.
   - *Owned badge on cards* and *Owned badge in Pokédex* show or hide the check mark on owned items.
-- **Account management:** My Account lets you change your username, change your email (password accounts; Supabase emails a confirmation link and the change applies once you open it), change your password or **set** one if you signed up with Google, link or unlink your Google account, and delete your account.
-- **Reset your data:** Settings can **clear every owned card** or **clear your whole wishlist** from your account on all devices. Both need an internet connection, push any pending changes first, and ask for confirmation.
-- **Delete account:** removes your account and everything in it (owned cards, wishlist, favorites) from all your devices. You confirm by typing `DELETE` (plus your current password if you have one).
-- **Works offline:** browse, add, edit and delete entries, and wishlist cards with no connection. Changes queue on the device and sync automatically when you are back online. Set and Card details need to be cached first.
-- **Settings:** currency, display preferences, manual refresh of cached data, clearing the image cache, replaying the onboarding hint, credits, version, clear owned cards / wishlist, account management and log out. A dot on the gear icon tells you when an update is available.
+- **Account management:** My Account lets you change your username (no password needed), change your email (password accounts only), change your password or **set** one if you signed up with Google, link or unlink your Google account, and delete your account. Changing your email sends a confirmation link and logs you out; confirm the link, then sign in with the new address.
+- **Reset your data (Danger Zone):** Settings can **clear every owned card** or **clear your whole wishlist** from your account on all devices. Both need an internet connection, push any pending changes first, and require you to type a confirmation phrase (`clear cards` or `clear wishlist`).
+- **Delete account:** removes your account and everything in it (owned cards, wishlist, favorites) from all your devices. You confirm by typing `delete` (case doesn't matter), plus your current password if you have one.
+- **Log out safely:** logging out asks for confirmation and warns you if any changes haven't synced yet.
+- **Works offline:** browse, add, edit and delete entries, and wishlist cards with no connection. Changes queue on the device and sync automatically when you are back online. Set and Card details need to be cached first. Settings shows how many changes are waiting to sync, and how many couldn't be saved.
+- **Settings:** currency, display preferences, manual refresh of cached data, clearing the image cache, replaying the onboarding hint, credits, version, the Danger Zone, account management and log out. A dot on the gear icon tells you when an update is available.
 
 ### Technical features
 
@@ -432,14 +446,16 @@ Typical order for a brand-new database: `seed:species` → `sync` → `backfill`
 - **Image versioning.** Every image URL carries a `?v=` content version, and cards are re-checked daily with conditional requests (ETag / Last-Modified), so changed art propagates without re-downloading everything.
 - **Offline-first client.** SQLite (WAL mode) holds sets, cards, details, Pokédex data, prices and your collection. Reads are cache-first, with background refreshes.
 - **Local statistics.** Statistics and Set Breakdown are computed on the device from SQLite and the cached catalog, so they work offline and need no extra API route.
-- **Outbox sync engine.** Writes go to SQLite first, then to an ordered outbox. Wishlist and favorites coalesce to the last desired state, and edits fold into pending operations. An idempotent `add_ownership_entry` RPC (operation IDs plus an advisory lock) means a retried request can never double-add. Offline, auth and 5xx failures pause the queue. Real rejections roll back and tell the user.
-- **Image cache.** Files are stored on the device and pinned for owned and wishlisted cards, set logos and symbols, and rarity icons. Everything else is LRU-evicted past 300 MB. 404s are remembered for 7 days.
+- **Outbox sync engine.** Writes go to SQLite first, then to an ordered outbox. Wishlist and favorites coalesce to the last desired state, and edits fold into pending operations. An idempotent `add_ownership_entry` RPC (operation IDs plus an advisory lock) means a retried request can never double-add. Offline, auth and 5xx failures pause the queue. Real rejections roll back and tell the user. Failed operations are kept for 7 days.
+- **Fast search suggestions.** The server keeps every card name and artist in an in-memory index (warmed on start-up, refreshed hourly), so suggestions need no database query. The app debounces keystrokes and caches recent results.
+- **Image cache.** Files are stored on the device and pinned for owned and wishlisted cards, set logos and symbols, rarity icons, and the artwork of Pokémon you own. Everything else is LRU-evicted past 300 MB. 404s are remembered for 7 days.
 - **Dex inference.** When TCGdex gives no Pokédex ID, Ember matches the card name against a seeded species table (longest whole-word match, tag-team cards split on " & ").
-- **Currency conversion.** USD-based ECB rates from Frankfurter are cached server-side (12 h) and on the device (24 h), and every price is converted at display time.
+- **Currency conversion.** USD-based ECB rates from Frankfurter are cached server-side (12 h) and on the device (24 h), and every price is converted at display time. The batch price endpoint also re-syncs up to 40 stale cards per request, so owned cards don't go stale between daily syncs.
 - **Update checks.** Once per 24 hours the app compares per-set timestamps with the server and only flags "update available". Nothing downloads until you press Refresh.
-- **Account deletion pipeline.** `DELETE /account` (authenticated) calls the `purge_user_data` database function, then deletes the auth user with the server-only secret key. The app then wipes its local data and signs out.
-- **Preferences.** Display toggles live in a small external store backed by AsyncStorage (`ember.prefs.v1`), so changing one updates every list instantly.
-- **Accessibility.** 48dp minimum touch targets (via `hitSlop` where the visual is smaller), `Pressable` with `accessibilityRole`, a visible label on every input, 4.5:1 contrast pairings, and state is never shown by color alone (owned, wishlisted and favorited states also change the icon).
+- **Account pipeline.** Username, email and password changes call Supabase Auth directly from the app. Two authenticated Express routes cover what the client can't do: `DELETE /account` calls the `purge_user_data` database function and then deletes the auth user with the server-only secret key, and `POST /account/email-login` gives a Google-first user who has set a password a real email identity, so Google can be unlinked without locking them out. A `has_password` flag on the user record tracks password state for Google-first accounts.
+- **Recovery links.** `ember://reset-password` links are captured at launch and while the app is open, then completed from a PKCE code, implicit tokens or a token hash.
+- **Preferences.** Display toggles live in a small external store backed by AsyncStorage (`ember.prefs.v1`), so changing one updates every list instantly. Collapsed series are saved per device in the same way.
+- **Accessibility.** 48dp minimum touch targets (via `hitSlop` where the visual is smaller), `Pressable` with `accessibilityRole`, a visible label on every input, 4.5:1 contrast pairings, and state is never shown by color alone (owned, wishlisted and favorited states also change the icon). The tab bar, toggles, collapsing headers and Welcome wave respect the system reduced-motion setting.
 - **Design tokens.** All colors, fonts, spacing, breakpoints and accessibility minimums live in `src/theme/theme.ts`, built on plain `StyleSheet` with no styling-library dependency.
 - **Security.** Auth-gated API with a cached token check, CORS allow-list, validated input on every route, parameterized SQL, a secret-protected cron endpoint, and RLS on every user table. See [Security](#security).
 
@@ -453,7 +469,7 @@ Typical order for a brand-new database: `seed:species` → `sync` → `backfill`
 6. **Check prices.** Tap the price pill on Card Detail for the TCGplayer / Cardmarket breakdown. Change your display currency in **Settings**.
 7. **Track progress.** Dashboard set cards show owned/total, the Pokédex shows Pokémon progress, **My Cards** shows your total value, and **Statistics** shows the big picture. Tap a set in Series Progress for its rarity breakdown.
 8. **Sort, filter, resize.** Use the Sort and Filter pills, and the grid button cycles 3 → 4 → 5 columns.
-9. **Tune the look.** In **Settings**, dim unowned cards or Pokémon, and hide the quick-add **+** or the owned check marks if you prefer cleaner grids.
+9. **Tune the look.** In **Settings → Display**, dim unowned cards or Pokémon, and hide the quick-add **+** or the owned check marks if you prefer cleaner grids.
 10. **Go offline.** Everything you have viewed or own stays available. Changes sync when you reconnect.
 11. **Stay up to date.** When a dot appears on the Dashboard gear icon, open **Settings → Refresh cached data** to pull new sets, price and image changes.
 12. **Manage your account.** **Settings → My Account** handles username, email, password, Google linking and account deletion. Forgot your password? Use **Forgot Password?** on the Log In screen.
@@ -473,6 +489,7 @@ Ember/
 │   │   ├── index.tsx                 # redirects by auth state
 │   │   ├── _layout.tsx               # root stack, fonts, splash, image cache init
 │   │   ├── reset-password.tsx        # opened by the password-reset email link
+│   │   ├── link-callback.tsx         # landing route after linking Google, bounces back
 │   │   ├── (auth)/                   # welcome, login, signup, forgot-password
 │   │   ├── (tabs)/
 │   │   │   ├── _layout.tsx           # floating NavBar, Android back handling
@@ -480,28 +497,32 @@ Ember/
 │   │   │   │   ├── set-detail/[setId].tsx
 │   │   │   │   ├── set-breakdown/[setId].tsx
 │   │   │   │   ├── card-detail/[cardId].tsx
-│   │   │   │   └── settings/         # index, credits, my-account/
+│   │   │   │   └── settings/         # index, display, credits, my-account/
 │   │   │   │       └── my-account/   #   index, change-username/email/password, delete-account
 │   │   │   ├── wishlist/             # index + card-detail/[cardId].tsx
 │   │   │   └── pokedex/              # index + pokemon-detail/[pokemonId].tsx + card-detail
 │   │   └── modals/                   # ownership-entry, pricing-detail (bottom sheets)
 │   ├── components/
-│   │   ├── atoms/                    # Button, Icon, IconButton, TextInput, Dropdown, ProgressBar,
+│   │   ├── atoms/                    # Button, Icon, IconButton, TextInput, Dropdown, ProgressBar, Toggle,
 │   │   │   └── icons/                #   CardImage, LogoImage, PokemonImage, placeholders, custom SVG icons
-│   │   ├── molecules/                # FormField, SearchBar, SortFilterBar, Pill, CardThumbnail, SetCard,
-│   │   │                             #   StatBox, ProgressRow, RankedCardRow, SettingsRow, ToggleRow,
-│   │   │                             #   AccountCard, QuantityStepper, ActionDialog, ConfirmDialog...
-│   │   ├── organisms/                # NavBar, CardGrid, SeriesGroup, CardDetailHeader, PillActionRow,
-│   │   │                             #   YourCollectionSection, EntryModalForm, SetDetailHeader,
+│   │   │                             #   (Pokéball, Pokédex, grid, heart, star, FireSparks, WaveFooter)
+│   │   ├── molecules/                # FormField, SearchBar, SearchSuggestions, SortFilterBar, OptionSheet,
+│   │   │                             #   Pill, CardThumbnail, SetCard, StatBox, ProgressRow, RankedCardRow,
+│   │   │                             #   SettingsRow, ToggleRow, AccountCard, QuantityStepper, RegionToggle,
+│   │   │                             #   SegmentedTabs, CollapsibleHeader, StatusView, ActionDialog,
+│   │   │                             #   ConfirmDialog, TypeToConfirmDialog, SuccessDialog...
+│   │   ├── organisms/                # NavBar, CardGrid, SeriesGroup, CardDetailHeader, CardLightbox,
+│   │   │                             #   PillActionRow, YourCollectionSection, EntryModalForm,
+│   │   │                             #   SetDetailHeader, PokemonSummaryCard, RegionSelectSheet,
 │   │   │                             #   PriceGrid, AccountForm, OnboardingHint...
 │   │   └── layout/                   # Screen (safe-area wrapper)
 │   ├── context/AuthContext.tsx       # Supabase session + sync start-up
 │   ├── hooks/                        # useAllOwned, useCardListView, useCurrency, useCachedImage,
-│   │                                 #   useStatistics, ...
+│   │                                 #   useStatistics, useBackToDashboard, useScrollToTopOnTabPress, ...
 │   ├── lib/                          # api, catalog, db (SQLite), sync + outbox, ownership, wishlist,
 │   │                                 #   favorites, imageCache, currency, prices, refresh, updateCheck,
 │   │                                 #   userScope, series, cardList, stats, pokedex, format, supabase,
-│   │                                 #   account, preferences, dataReset, onboarding, logout
+│   │                                 #   account, recoveryLink, preferences, dataReset, onboarding, logout
 │   ├── screens/                      # CardDetailScreen, PokemonDetailScreen (shared across tab stacks)
 │   └── theme/theme.ts                # design tokens
 ├── server/
@@ -540,7 +561,7 @@ flowchart LR
 
   LIB -- "catalog reads (JWT)" --> API["Express API<br/>Render"]
   OB -- "user data writes (JWT, RLS)" --> SB[("Supabase<br/>Auth + user tables")]
-  API -- "verifies token,<br/>deletes accounts" --> SB
+  API -- "verifies token, deletes accounts,<br/>enables email sign-in" --> SB
   API --> PG[("Postgres<br/>catalog schema")]
   API -- "optimized WebP (sharp)" --> ST[("Supabase Storage<br/>image buckets")]
   API --> TCG["TCGdex"]
@@ -552,7 +573,7 @@ flowchart LR
 **Two data systems that never mix directly.**
 
 1. **Public catalog (same for everyone).** Express syncs TCGdex into a Postgres `catalog` schema, so users are served from our copy rather than hitting TCGdex repeatedly. The schema has RLS enabled with no policies and revoked grants, and it is never exposed through the Supabase API. Only Express, using a direct connection, can read it. A daily job discovers new sets, backfills details, refreshes stale prices and re-checks images. Pokémon artwork is the one exception to "the app never calls a third party": artwork URLs point at the PokeAPI sprites repository and are then downloaded once and cached on the device.
-2. **Private user data (per user).** Ownership entries, the wishlist and favorite sets live in Supabase `public` tables protected by RLS (`auth.uid() = user_id`). The app writes to them directly with the user's JWT, and there is no Express write route. There is deliberately no foreign key from user data to the catalog, so a catalog re-sync can never cascade into someone's collection. The single exception is account deletion, which goes through Express because removing an auth user needs the server-only secret key.
+2. **Private user data (per user).** Ownership entries, the wishlist and favorite sets live in Supabase `public` tables protected by RLS (`auth.uid() = user_id`). The app writes to them directly with the user's JWT, and there is no Express write route. There is deliberately no foreign key from user data to the catalog, so a catalog re-sync can never cascade into someone's collection. The exceptions are account deletion and enabling email sign-in for Google-first users, which go through Express because they need the server-only secret key or direct access to the auth tables.
 
 **Offline-first client.**
 
@@ -573,8 +594,8 @@ flowchart LR
 
 | Layer | Technology |
 | --- | --- |
-| App | React Native 0.86, React 19, Expo SDK 57, expo-router, Reanimated, TypeScript |
-| On-device storage | expo-sqlite, expo-file-system, AsyncStorage (session, UI preferences, onboarding flag) |
+| App | React Native 0.86, React 19 (React Compiler enabled), Expo SDK 57, expo-router (typed routes), Reanimated, TypeScript |
+| On-device storage | expo-sqlite, expo-file-system, AsyncStorage (session, UI preferences, collapsed series, onboarding flag) |
 | API | Node.js 22, Express 5, `pg`, `sharp`, `compression`, TypeScript |
 | Database and auth | Supabase (Postgres, Auth, Storage, RLS) |
 | Hosting and jobs | Render (free web service), cron-job.org, EAS Build |
@@ -712,8 +733,6 @@ Refreshing cached data, the update dot on the gear icon, and the sync-problem al
 
 ## Known issues
 
-- **Account deletion is not working yet.** The flow is built end to end (confirmation screen, `DELETE /account`, the `purge_user_data` function and the auth-user delete), but the request currently fails, so the account is not removed. Don't rely on it until this entry is gone.
-- **Change Password is not working yet.** The screen and its validation are in place, but changing a password currently fails. Use **Forgot Password?** on the Log In screen as a workaround. Setting a first password for a Google-only account may be affected too.
 - **English cards only.** The catalog is synced from TCGdex's English endpoint, so Japanese and Chinese sets are missing.
 - **Android only, portrait only.** There is no iOS build and no landscape layout.
 - **Search is capped at 200 results**, and the Owned / Not Owned filter on Search Results only sees those 200 cards. Narrow your query to see more.
@@ -727,7 +746,6 @@ Refreshing cached data, the update dot on the gear icon, and the sync-problem al
 
 ## Next steps
 
-- **Fix account deletion and Change Password**, then remove them from Known issues.
 - **Data export and import.** CSV export and import of the collection.
 - **Japanese and Chinese set support.** TCGdex serves other languages, so this means syncing more language endpoints into the catalog, adding a language column and a language-aware ID (so IDs from different languages can't collide), a language filter or switcher in the UI, and fallback images for sets that exist in only one language.
 - **Least-privilege database role** and, if possible, network restrictions on the database.
@@ -747,7 +765,9 @@ Highlights:
 - The Supabase **secret key** and database password are used only on the server (Storage uploads and account deletion). The app only ships the publishable key.
 - Every user table has Row Level Security restricted to the signed-in user's own rows, with no FK links into the catalog. The `purge_user_data` function is `SECURITY DEFINER` but executable only by the server's `service_role`.
 - Express requires a verified Supabase token on every route except `/health` and the cron endpoint. The cron endpoint is protected by a shared secret (minimum 24 characters, constant-time comparison) and returns 401 if the secret is missing or wrong.
-- Sensitive account actions (change email, change password, delete account) re-check the current password first, for accounts that have one.
+- The two account routes (`DELETE /account`, `POST /account/email-login`) sit behind that token check and act only on the caller's own user ID taken from the verified token, never from the request body. `email-login` runs in a single transaction with a row lock, parameterized, and refuses users who have no password or an unconfirmed email.
+- Sensitive account actions (change email, change password, delete account) re-check the current password first, for accounts that have one. Destructive data actions (clear owned cards, clear wishlist, delete account) also require typing a confirmation phrase.
+- Forgot Password shows the same neutral message whether or not an account exists for the email, so it can't be used to discover registered addresses.
 - CORS is an allow-list from `CORS_ORIGINS`, not a wildcard. Bodies are size-limited, every ID and query parameter is validated server-side, and SQL is parameterized.
 - Image uploads are re-encoded by `sharp` with an input-size limit, rather than stored as received.
 - Error responses are generic and details are logged server-side only.

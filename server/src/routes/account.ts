@@ -46,7 +46,7 @@ accountRouter.post('/account/email-login', async (_req, res) => {
     if (existing.rowCount === 0) {
       await client.query(
         `insert into auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
-         values ($1, $1, jsonb_build_object('sub', $1::text, 'email', $2::text, 'email_verified', true, 'phone_verified', false),
+         values ($1::text, $1::uuid, jsonb_build_object('sub', $1::text, 'email', $2::text, 'email_verified', true, 'phone_verified', false),
                  'email', now(), now(), now())`,
         [userId, u.email],
       );

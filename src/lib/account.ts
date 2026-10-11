@@ -143,7 +143,10 @@ export async function ensureEmailLogin() {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     throw new AccountError(body?.error === 'no_password' ? 'Set a password before unlinking Google.' : 'Confirm your email address before unlinking Google.');
   }
-  if (!res.ok) throw new AccountError(`Could not prepare email sign-in (error ${res.status}). Please try again.`);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { detail?: string } | null;
+    throw new AccountError(`Could not prepare email sign-in (error ${res.status}${body?.detail ? `: ${body.detail}` : ''}). Please try again.`);
+  }
 }
 
 async function fetchIdentities(): Promise<UserIdentity[]> {

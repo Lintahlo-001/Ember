@@ -1,17 +1,19 @@
 import LogoImage from '@/src/components/atoms/LogoImage';
 import ProgressBar from '@/src/components/atoms/ProgressBar';
 import theme from '@/src/theme/theme';
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 type Props = {
+  id: string;
   name: string;
   logoUri: string | null;
   cardCount: number;
   owned: number;
-  onPress: () => void;
+  onPress: (id: string) => void;
 };
 
-export default function SetCard({ name, logoUri, cardCount, owned, onPress }: Props) {
+function SetCard({ id, name, logoUri, cardCount, owned, onPress }: Props) {
   const progress = cardCount > 0 ? Math.min(1, owned / cardCount) : 0;
   const pct = Math.round(progress * 100);
 
@@ -19,7 +21,7 @@ export default function SetCard({ name, logoUri, cardCount, owned, onPress }: Pr
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${name}, ${owned} of ${cardCount} owned, ${pct} percent complete`}
-      onPress={onPress}
+      onPress={() => onPress(id)}
       style={styles.card}
     >
       <LogoImage uri={logoUri} label={`${name} logo`} style={styles.logo} iconSize={28} />
@@ -36,6 +38,8 @@ export default function SetCard({ name, logoUri, cardCount, owned, onPress }: Pr
     </Pressable>
   );
 }
+
+export default memo(SetCard);
 
 const styles = StyleSheet.create({
   card: {

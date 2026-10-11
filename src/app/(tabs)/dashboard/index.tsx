@@ -3,10 +3,10 @@ import Screen from '@/src/components/layout/Screen';
 import NavCard from '@/src/components/molecules/NavCard';
 import SearchBar from '@/src/components/molecules/SearchBar';
 import SearchSuggestions from '@/src/components/molecules/SearchSuggestions';
-import SetCard from '@/src/components/molecules/SetCard';
 import StatusView from '@/src/components/molecules/StatusView';
 import { OnboardingHint } from '@/src/components/organisms/OnboardingHint';
 import SeriesGroup, { SERIES_BODY_PADDING } from '@/src/components/organisms/SeriesGroup';
+import SeriesSetGrid from '@/src/components/organisms/SeriesSetGrid';
 import { useAllOwned } from '@/src/hooks/useAllOwned';
 import { useCollapsed } from '@/src/hooks/useCollapsed';
 import { useFavoriteSets } from '@/src/hooks/useFavoriteSets';
@@ -74,6 +74,12 @@ export default function Dashboard() {
       params: s.kind === 'artist' ? { artist: s.label } : { query: s.label },
     });
   };
+
+  const openSet = useCallback(
+    (setId: string) =>
+      router.push({ pathname: '/(tabs)/dashboard/set-detail/[setId]', params: { setId } }),
+    [],
+  );
 
   const submitSearch = () => {
     const q = query.trim();
@@ -153,21 +159,12 @@ export default function Dashboard() {
             collapsed={needle ? false : isCollapsed(item.name)}
             onToggle={() => toggle(item.name)}
           >
-            <View style={styles.grid}>
-              {item.sets.map((s) => (
-                <View key={s.id} style={{ width: itemWidth }}>
-                  <SetCard
-                    name={s.name}
-                    logoUri={s.logo_url}
-                    cardCount={s.card_count_total}
-                    owned={ownedBySet.get(s.id) ?? 0}
-                    onPress={() =>
-                      router.push({ pathname: '/(tabs)/dashboard/set-detail/[setId]', params: { setId: s.id } })
-                    }
-                  />
-                </View>
-              ))}
-            </View>
+            <SeriesSetGrid
+              sets={item.sets}
+              ownedBySet={ownedBySet}
+              itemWidth={itemWidth}
+              onOpenSet={openSet}
+            />
           </SeriesGroup>
         )}
       />

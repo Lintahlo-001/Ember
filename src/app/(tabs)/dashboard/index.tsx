@@ -22,8 +22,10 @@ import theme from '@/src/theme/theme';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 
 const GAP = theme.spacing.space1;
+const ITEM_LAYOUT = LinearTransition.duration(250);
 
 export default function Dashboard() {
   const [showHint, setShowHint] = useState(false);
@@ -127,10 +129,11 @@ export default function Dashboard() {
 
   return (
     <Screen>
-      <FlatList
-        ref={listRef}
+      <Animated.FlatList
+        ref={listRef as any}
         data={groups}
-        keyExtractor={(g) => g.name}
+        keyExtractor={(g: SerieGroup) => g.name}
+        itemLayoutAnimation={ITEM_LAYOUT}
         initialNumToRender={3}
         windowSize={5}
         ListHeaderComponent={header}
@@ -144,7 +147,7 @@ export default function Dashboard() {
             </StatusView>
           </View>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item }: { item: SerieGroup }) => (
           <SeriesGroup
             name={item.name}
             collapsed={needle ? false : isCollapsed(item.name)}

@@ -17,8 +17,9 @@ import { catalog } from '@/src/lib/catalog';
 import { groupBySerie } from '@/src/lib/series';
 import theme from '@/src/theme/theme';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 type Row =
   | { type: 'serie'; key: string; name: string }
@@ -26,6 +27,8 @@ type Row =
   | { type: 'cards'; key: string; cards: CardListItem[] };
 
 const GAP = theme.spacing.space1;
+const EXIT = FadeOut.duration(120);
+const LAYOUT = LinearTransition.duration(250);
 
 export default function MyCards() {
   const { width } = useWindowDimensions();
@@ -39,6 +42,16 @@ export default function MyCards() {
   const [dataError, setDataError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState('');
+  const [animating, setAnimating] = useState(false);
+  const animTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (animTimer.current) clearTimeout(animTimer.current); }, []);
+
+  const toggleAnimated = (key: string) => {
+    setAnimating(true);
+    if (animTimer.current) clearTimeout(animTimer.current);
+    animTimer.current = setTimeout(() => setAnimating(false), 400);
+    toggle(key);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -146,9 +159,11 @@ export default function MyCards() {
     <Screen>
       <ScreenHeader title="My Cards" />
       <StatusView loading={!ready && !error} error={error} onRetry={retry}>
-        <FlatList
+        <Animated.FlatList
           data={rows}
-          keyExtractor={(r) => r.key}
+          extraData={animating}
+          keyExtractor={(r: Row) => r.key}
+          itemLayoutAnimation={LAYOUT}
           ListHeaderComponent={header}
           ListEmptyComponent={
             <Text style={styles.empty}>
@@ -157,11 +172,11 @@ export default function MyCards() {
           }
           initialNumToRender={8}
           windowSize={7}
-          removeClippedSubviews
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => {
+          renderItem={({ item }: { item: Row }) => {
+            const enter = animating ? FadeIn.duration(200) : undefined;
             if (item.type === 'serie') {
               return (
                 <View style={styles.serieRow}>
@@ -169,24 +184,26 @@ export default function MyCards() {
                     tone="series"
                     title={item.name}
                     collapsed={isCollapsed(item.key)}
-                    onToggle={() => toggle(item.key)}
+                    onToggle={() => toggleAnimated(item.key)}
                   />
                 </View>
               );
             }
             if (item.type === 'set') {
               return (
-                <CollapsibleHeader
-                  tone="set"
-                  title={item.set.name}
-                  collapsed={isCollapsed(item.key)}
-                  onToggle={() => toggle(item.key)}
-                  leading={<LogoImage uri={item.set.symbol_url} label="Set symbol" style={styles.symbol} iconSize={14} />}
-                />
+                <Animated.View entering={enter} exiting={EXIT}>
+                  <CollapsibleHeader
+                    tone="set"
+                    title={item.set.name}
+                    collapsed={isCollapsed(item.key)}
+                    onToggle={() => toggleAnimated(item.key)}
+                    leading={<LogoImage uri={item.set.symbol_url} label="Set symbol" style={styles.symbol} iconSize={14} />}
+                  />
+                </Animated.View>
               );
             }
             return (
-              <View style={styles.cardRow}>
+              <Animated.View entering={enter} exiting={EXIT} style={styles.cardRow}>
                 {item.cards.map((c) => (
                   <CardThumbnail
                     key={c.id}
@@ -199,7 +216,7 @@ export default function MyCards() {
                     showBadge={false}
                   />
                 ))}
-              </View>
+              </Animated.View>
             );
           }}
         />

@@ -1,7 +1,14 @@
 import Icon from '@/src/components/atoms/Icon';
 import theme from '@/src/theme/theme';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 type Props = {
   title: string;
@@ -13,6 +20,18 @@ type Props = {
 
 export default function CollapsibleHeader({ title, collapsed, onToggle, tone, leading }: Props) {
   const color = tone === 'series' ? theme.colors.surface : theme.colors.text;
+  const reduceMotion = useReducedMotion();
+  const rotation = useSharedValue(collapsed ? -90 : 0);
+
+  useEffect(() => {
+    const target = collapsed ? -90 : 0;
+    rotation.value = reduceMotion ? target : withTiming(target, { duration: 250, easing: Easing.out(Easing.cubic) });
+  }, [collapsed, reduceMotion, rotation]);
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -25,7 +44,9 @@ export default function CollapsibleHeader({ title, collapsed, onToggle, tone, le
       <Text style={[styles.title, tone === 'series' ? styles.seriesTitle : null, { color }]} numberOfLines={1}>
         {title}
       </Text>
-      <Icon name={collapsed ? 'chevron-right' : 'chevron-down'} size={22} color={color} />
+      <Animated.View style={chevronStyle} accessible={false} importantForAccessibility="no-hide-descendants">
+        <Icon name="chevron-down" size={22} color={color} />
+      </Animated.View>
     </Pressable>
   );
 }

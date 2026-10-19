@@ -79,18 +79,29 @@ export async function syncSet(setId: string): Promise<void> {
   }
 }
 
-function extractPrice(p: TcgdexCard['pricing']): { value: number | null; currency: string | null } {
-  const tp = p?.tcgplayer as Record<string, any> | undefined;
+function extractPrice(p: TcgdexCard['pricing'] | Record<string, any> | null | undefined) {
+  const tp = (p as any)?.tcgplayer as Record<string, any> | undefined;
   if (tp) {
-    for (const key of ['normal', 'holofoil', 'reverse-holofoil', '1st-edition']) {
+    const preferred = ['normal', 'holofoil', 'holo', 'reverse-holofoil', 'reverse', '1st-edition'];
+    const keys = [...preferred, ...Object.keys(tp).filter((k) => !preferred.includes(k))];
+    for (const key of keys) {
       const m = tp[key]?.marketPrice;
       if (typeof m === 'number' && Number.isFinite(m)) return { value: m, currency: str(tp.unit, 8) ?? 'USD' };
     }
   }
-  const cm = p?.cardmarket;
+  const cm = (p as any)?.cardmarket;
   const v = cm?.trend ?? cm?.avg;
   if (typeof v === 'number' && Number.isFinite(v)) return { value: v, currency: str(cm?.unit, 8) ?? 'EUR' };
   return { value: null, currency: null };
+}
+
+function mergePricing(prev: any, next: TcgdexCard['pricing']) {
+  const out: Record<string, unknown> = { ...(prev ?? {}) };
+  for (const src of ['tcgplayer', 'cardmarket'] as const) {
+    const incoming = next?.[src];
+    if (incoming && Object.keys(incoming).length > 0) out[src] = incoming;
+  }
+  return Object.keys(out).length > 0 ? out : null;
 }
 
 export async function syncCard(cardId: string): Promise<void> {
@@ -98,7 +109,11 @@ export async function syncCard(cardId: string): Promise<void> {
   const setExists = await pool.query('SELECT 1 FROM catalog.sets WHERE id = $1', [card.set.id]);
   if (!setExists.rowCount) await syncSet(card.set.id);
 
-  const { value, currency } = extractPrice(card.pricing);
+  const { rows: prevRows } = await pool.query(
+    'SELECT pricing FROM catalog.cards WHERE id = $1', [cardId],
+  );
+  const pricing = mergePricing(prevRows[0]?.pricing, card.pricing);
+  const { value, currency } = extractPrice(pricing);
   const given = Array.isArray(card.dexId) ? card.dexId.filter((n) => Number.isInteger(n)) : [];
   const { ids: dexIds, inferred: dexInferred } = await resolveDexIds(given, card.name, card.category);
 
@@ -122,7 +137,7 @@ export async function syncCard(cardId: string): Promise<void> {
       str(card.name), str(card.image, 500), str(card.category, 60), str(card.rarity, 60),
       str(card.illustrator, 120), dexIds,
       card.variants ? JSON.stringify(card.variants) : null,
-      card.pricing ? JSON.stringify(card.pricing) : null,
+      pricing ? JSON.stringify(pricing) : null,
       value, currency, dexInferred,
     ],
   );
@@ -154,17 +169,30 @@ export async function syncAllSets(): Promise<{ discovered: number; updated: numb
   return { discovered, updated };
 }
 
-export async function refreshStaleCards(limit = 500): Promise<number> {
-  const { rows } = await pool.query(
-    `SELECT id FROM catalog.cards
-     WHERE detail_synced_at IS NOT NULL AND detail_synced_at < now() - interval '24 hours'
-     ORDER BY detail_synced_at ASC LIMIT $1`,
-    [limit],
-  );
+export async function refreshStaleCards(maxMs = 20 * 60_000, concurrency = 8): Promise<number> {
+  const deadline = Date.now() + maxMs;
+  const failed = new Set<string>();
   let done = 0;
-  for (let i = 0; i < rows.length; i += 5) {
-    const results = await Promise.allSettled(rows.slice(i, i + 5).map((r) => syncCard(r.id)));
-    done += results.filter((r) => r.status === 'fulfilled').length;
+
+  while (Date.now() < deadline) {
+    const { rows } = await pool.query(
+      `SELECT id FROM catalog.cards
+       WHERE detail_synced_at IS NOT NULL
+         AND detail_synced_at < now() - interval '20 hours'
+         AND id <> ALL($1::text[])
+       ORDER BY detail_synced_at ASC LIMIT 200`,
+      [[...failed]],
+    );
+    if (rows.length === 0) break;
+
+    for (let i = 0; i < rows.length && Date.now() < deadline; i += concurrency) {
+      const chunk = rows.slice(i, i + concurrency);
+      const results = await Promise.allSettled(chunk.map((r) => syncCard(r.id)));
+      results.forEach((r, j) => {
+        if (r.status === 'fulfilled') done++;
+        else failed.add(chunk[j].id);
+      });
+    }
   }
   return done;
 }

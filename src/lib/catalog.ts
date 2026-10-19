@@ -483,7 +483,7 @@ async function applyPrices(list: PriceUpdate[]): Promise<void> {
   await runTx(async (tx) => {
     for (const p of list) {
       await tx.runAsync(
-        'UPDATE cards SET price_market = ?, price_currency = ?, synced_at = COALESCE(?, synced_at) WHERE id = ?',
+        'UPDATE cards SET price_market = COALESCE(?, price_market), price_currency = COALESCE(?, price_currency), synced_at = COALESCE(?, synced_at) WHERE id = ?',
         [p.price_market, p.price_currency, p.synced_at, p.id],
       );
     }

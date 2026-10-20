@@ -200,13 +200,14 @@ export async function refreshStaleCards(maxMs = 20 * 60_000, concurrency = 8): P
 export async function syncMissingDetails(
   maxCards = Infinity,
   concurrency = 5,
+  deadline = Infinity,
 ): Promise<{ done: number; failed: number }> {
   const BATCH = 200;
   let lastId = '';
   let done = 0;
   let failed = 0;
 
-  while (done + failed < maxCards) {
+  while (done + failed < maxCards && Date.now() < deadline) {
     const take = Math.min(BATCH, maxCards - done - failed);
     const { rows } = await pool.query(
       `SELECT id FROM catalog.cards
@@ -217,7 +218,7 @@ export async function syncMissingDetails(
     if (rows.length === 0) break;
     lastId = rows[rows.length - 1].id;
 
-    for (let i = 0; i < rows.length; i += concurrency) {
+    for (let i = 0; i < rows.length && Date.now() < deadline; i += concurrency) {
       const chunk = rows.slice(i, i + concurrency);
       const results = await Promise.allSettled(chunk.map((r) => syncCard(r.id)));
       results.forEach((r, j) => {

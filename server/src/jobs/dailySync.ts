@@ -7,14 +7,19 @@ import { refreshFx } from '../fx';
 import { recheckImages } from '../imageRecheck';
 import { recheckFallbackLogos, refreshStaleCards, syncAllSets, syncMissingDetails } from '../sync';
 
+const BUDGET_MS = 45 * 60_000;
+
 export async function runDailySync(): Promise<string> {
   const started = Date.now();
-  const sets = await syncAllSets();
-  const details = await syncMissingDetails(3000);
-  const cards = await refreshStaleCards();
-  const logoChecks = await recheckFallbackLogos();
-  const images = await recheckImages(1000);
+  const deadline = started + BUDGET_MS;
+  console.log('Daily sync started');
+
   const fx = await refreshFx().then(() => 'ok', (err) => `failed (${(err as Error).message})`);
+  const sets = await syncAllSets();
+  const logoChecks = await recheckFallbackLogos();
+  const details = await syncMissingDetails(Infinity, 8, started + BUDGET_MS * 0.6);
+  const cards = await refreshStaleCards(Math.max(0, deadline - Date.now()));
+  const images = await recheckImages(1000);
 
   return (
     `Sync done in ${Math.round((Date.now() - started) / 1000)}s: ` +

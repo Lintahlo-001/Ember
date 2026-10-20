@@ -96,10 +96,21 @@ function extractPrice(p: TcgdexCard['pricing'] | Record<string, any> | null | un
 }
 
 function mergePricing(prev: any, next: TcgdexCard['pricing']) {
-  const out: Record<string, unknown> = { ...(prev ?? {}) };
+  const out: Record<string, any> = { ...(prev ?? {}) };
   for (const src of ['tcgplayer', 'cardmarket'] as const) {
-    const incoming = next?.[src];
-    if (incoming && Object.keys(incoming).length > 0) out[src] = incoming;
+    const inc = (next as any)?.[src];
+    if (!inc || Object.keys(inc).length === 0) continue;
+    const old = out[src] ?? {};
+    const merged: Record<string, any> = { ...old, ...inc };
+    for (const [k, v] of Object.entries(inc)) {
+      const o = old[k];
+      if (v && typeof v === 'object' && !Array.isArray(v) && o && typeof o === 'object') {
+        const m: Record<string, any> = { ...o, ...(v as object) };
+        for (const f of Object.keys(o)) if ((v as any)[f] == null && o[f] != null) m[f] = o[f];
+        merged[k] = m;
+      }
+    }
+    out[src] = merged;
   }
   return Object.keys(out).length > 0 ? out : null;
 }

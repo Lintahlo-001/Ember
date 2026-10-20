@@ -245,7 +245,7 @@ cd server
 # 1. Seed Pokémon species + descriptions from PokeAPI (~1,025 requests, safe to re-run)
 npm run seed:species
 
-# 2. Discover every set and its brief cards, then fetch the first 3,000 card details
+# 2. Discover every set, backfill new card details and refresh stale ones (time-budgeted, ~45 min)
 npm run sync
 
 # 3. Fetch every remaining card's full details (uncapped, safe to Ctrl-C and re-run)
@@ -325,7 +325,7 @@ app.use(pokedexRouter);
    # expect: 202 {"status":"started"}
    ```
 
-   Send the second request twice in quick succession. The second should return `409 Sync already running`. The sync runs in the background, and its result appears in Render's **Logs** tab as `Sync done in …s: …`.
+   Send the second request twice in quick succession. The second should return `409 Sync already running`. The route answers`202` immediately and the work runs in the background, so a failure is only visible in Render’s Logs. Look for `Daily sync started` and the final `Sync done in …` line.
 3. **Daily sync job** on cron-job.org:
    - URL: `https://<your-service>.onrender.com/internal/sync`
    - Schedule: once a day, at an hour when you're asleep. TCGdex prices only update once a day at the source anyway.
@@ -391,7 +391,7 @@ All jobs live in `server/src/jobs/` and run with `npm run <script>` from `server
 
 | Script | What it does | When to run it |
 | --- | --- | --- |
-| `npm run sync` / `sync:prod` | The **daily sync**. Discovers new or changed sets, backfills up to 3,000 missing card details, refreshes up to 500 cards older than 24 h, restores fallback logos that TCGdex now serves, re-checks 1,000 images for art changes (mirrored images are re-downloaded and re-optimized if they changed), and refreshes FX rates. The same work runs over HTTP via `POST /internal/sync`. | Daily (automated by cron-job.org). Run manually for the initial fill or to force a refresh. It does **not** run PokeWallet sweeps. |
+| `npm run sync` / `sync:prod` | The **daily sync**. Refreshes FX rates, discovers new or changed sets, restores fallback logos that TCGdex now serves, backfills missing card details (uncapped, within a 45-minute budget), then refreshes stale cards oldest-first (anything older than 20 h) with whatever budget remains, and re-checks 1,000 images for art changes. A run that hits the budget stops cleanly and the next day continues with the oldest cards, so the whole catalog rotates. The same work runs over HTTP via `POST /internal/sync`. | Daily (automated by cron-job.org). Run manually for the initial fill or to force a refresh. It does **not** run PokeWallet sweeps. |
 | `npm run backfill` / `backfill:prod` | **Uncapped** backfill of full card details (rarity, illustrator, variants, pricing, dex IDs) for every card that only has brief data. Safe to Ctrl-C and re-run. | Once after the first `sync`, or after a big new set lands. |
 | `npm run seed:species` | Fills `catalog.pokemon_species` from PokeAPI (name, slug, latest English description). Idempotent. | Once before the first `backfill`, and again only if new Pokémon are released. |
 | `npm run backfill:dex` / `backfill:dex:prod` | Infers Pokédex IDs for Pokémon cards TCGdex gave none for. `--dry-run` previews matches and unmatched names, `--redo` re-evaluates previously inferred rows. Never overwrites a real TCGdex dex ID. | After seeding species, or after tuning the matcher. |
@@ -450,7 +450,8 @@ Typical order for a brand-new database: `seed:species` → `sync` → `backfill`
 - **Fast search suggestions.** The server keeps every card name and artist in an in-memory index (warmed on start-up, refreshed hourly), so suggestions need no database query. The app debounces keystrokes and caches recent results.
 - **Image cache.** Files are stored on the device and pinned for owned and wishlisted cards, set logos and symbols, rarity icons, and the artwork of Pokémon you own. Everything else is LRU-evicted past 300 MB. 404s are remembered for 7 days.
 - **Dex inference.** When TCGdex gives no Pokédex ID, Ember matches the card name against a seeded species table (longest whole-word match, tag-team cards split on " & ").
-- **Currency conversion.** USD-based ECB rates from Frankfurter are cached server-side (12 h) and on the device (24 h), and every price is converted at display time. The batch price endpoint also re-syncs up to 40 stale cards per request, so owned cards don't go stale between daily syncs.
+- **Currency conversion.** USD-based ECB rates from Frankfurter are cached server-side (12 h) and on the device (24 h), and every price is converted at display time. The batch price endpoint also re-syncs up to 40 stale cards per request, and the daily job refreshes the whole catalog, so prices stay current for cards you don’t own too.
+- **Safe price merging.** TCGdex pricing is merged per source and per variant field. A sync that returns a missing source or a null price never overwrites the last known good value, and the on-device price update ignores nulls.
 - **Update checks.** Once per 24 hours the app compares per-set timestamps with the server and only flags "update available". Nothing downloads until you press Refresh.
 - **Account pipeline.** Username, email and password changes call Supabase Auth directly from the app. Two authenticated Express routes cover what the client can't do: `DELETE /account` calls the `purge_user_data` database function and then deletes the auth user with the server-only secret key, and `POST /account/email-login` gives a Google-first user who has set a password a real email identity, so Google can be unlinked without locking them out. A `has_password` flag on the user record tracks password state for Google-first accounts.
 - **Recovery links.** `ember://reset-password` links are captured at launch and while the app is open, then completed from a PKCE code, implicit tokens or a token hash.
@@ -586,7 +587,7 @@ flowchart LR
 
 **Refresh flow.** Once per 24 h (and when the app returns to the foreground) the app compares per-set timestamps from `GET /sets/status` with its local copy and only raises the update dot. Pressing **Refresh cached data** syncs the outbox, then downloads only the sets and cards that changed, refreshes rarity icons and Pokédex data, batch-refreshes prices for owned and wishlisted cards, and re-pins images. Each set updates in its own transaction, so an interrupted refresh only leaves that set stale.
 
-**Pricing.** TCGdex supplies TCGplayer and Cardmarket prices, which flow into Postgres through the daily sync. The device stores a USD-based rate table (Frankfurter / ECB) and converts at display time, and falls back to the source currency if rates haven't loaded yet.
+**Pricing.** TCGdex supplies TCGplayer and Cardmarket prices, which flow into Postgres through the daily sync. The device stores a USD-based rate table (Frankfurter / ECB) and converts at display time, and falls back to the source currency if rates haven't loaded yet. The daily job rotates through every card (oldest first, within a time budget), not just owned ones. Market price prefers TCGplayer and falls back to Cardmarket only when no TCGplayer price exists.
 
 **Auth.** Supabase handles email/password and Google OAuth (via `expo-web-browser`). Express guards every route except `/health` and the secret-protected `/internal/sync`, by verifying the bearer token with Supabase (cached for 60 seconds). Account changes (username, email, password, Google linking) call Supabase Auth directly from the app, re-checking the current password first where one exists.
 
@@ -735,7 +736,7 @@ Refreshing cached data, the update dot on the gear icon, and the sync-problem al
 - **Local data isn't encrypted at rest.** The SQLite file on the device contains your collection.
 - **Multi-device edits are last-write-wins** by `updated_at`.
 - **Database role isn't least-privilege yet.** The server connects with Supabase's default `postgres` role, and the database isn't IP-restricted.
-- **Pricing field names rely on TCGdex's current shape.** Variant keys (`normal`, `holofoil`, `reverse-holofoil`, `1st-edition`) and Cardmarket fields (`trend`, `low`, `avg`, `trend-holo`) were mapped from TCGdex's documented format.
+- **Pricing depends on TCGdex’s data freshness.** TCGplayer figures can lag Cardmarket’s by days, and TCGdex occasionally returns a source without a price. Ember keeps the last known value in that case. Variant keys are read generically, but Cardmarket field names (trend, low, avg, trend-holo) still follow TCGdex’s current shape.
 - **PokeWallet fallback is rate-limited** (100 requests/hour, 1,000/day), so large image backlogs need several manual `sweep` runs.
 
 ## Next steps
